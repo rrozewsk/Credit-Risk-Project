@@ -42,6 +42,7 @@ class MC_Vasicek_Sim(object):
         integralR = r.cumsum(axis=0)*self.t_step
     #calculate Libor
         self.libor = np.exp(-integralR)
+        
         return self.libor
 
     def getSmallLibor(self,datelist=None):
@@ -49,7 +50,8 @@ class MC_Vasicek_Sim(object):
         if(datelist is None):
             datelist=self.datelist
         ind = self.return_indices1_of_a(self.datelistlong, datelist)
-        self.smallLibor=self.libor.loc[self.datelist]
+        df=DataFrame(self.getLibor())
+        self.smallLibor=df.loc[ind]
         return self.smallLibor
 
 #####################################################################################
