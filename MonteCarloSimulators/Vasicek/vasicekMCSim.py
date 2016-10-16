@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from parameters import WORKING_DIR
 import os
+import bisect
 
 
 class MC_Vasicek_Sim(object):
@@ -65,6 +66,6 @@ class MC_Vasicek_Sim(object):
     def return_indices2_of_a(self, a, b):
         index=[]
         for item in a:
-            index.append(np.bisect.bisect(b,item))
+            index.append(bisect.bisect(b,item))
         return np.unique(index).tolist()
 
