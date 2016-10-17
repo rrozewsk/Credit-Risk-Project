@@ -1,0 +1,35 @@
+### Instructor-specified goals ###
+
++ [ ] Do the following in MonteCarloSimulators/Vasicek/vasicekMCSim.py: 
+    - [ ] Create a method to calculate average of simulations.
+    - [ ] Include average of simulations as column 0 in getLibor() method.
+    - [ ] Include a method that will determine Vasicek perameters (`x`)
+        from interest rate curve ('Z') using scipy optimize
+    - [ ] Include a method that will determine Vasicek perameters from
+        credit curve ('Q') using scipy optimize.
++ [ ] Create the file `exponentialMCSim.py` in
+      MonteCarloSimulators/Exponential.
++ [ ] Create the file `CIRMCSim.py` in MonteCarloSimulators/CIR
++ [ ] Do the following:
+    - [ ] Create/finish the Bond class.
+    - [ ] Create/finish the Bond test.
++ [ ] Create a CVA class. Pricing should be calculated in two ways:
+      using the credit curve as input and/or using the interest as
+      input.
++ [ ] Create a CDSBootStrapper class that generates credit curve from
+      list of CDS prices.
++ [ ] Use the Vasicek & CDSBootStrapper classes & Quandl to generate
+      credit curves for every credit rating.
+
+
+### Other goals ###
+
++ [ ] Include docstrings on ALL modules, classes, and public methods.
+    - [ ] MonteCarloSimulators/Vasicek/vasicekMCSim.py
+    - [ ] Products/Credit/CDS.py
+    - [ ] Products/Rates/Bond.py
+    - etc. 
++ [ ] Add all binaries (.pyc, .pyo, __pycache__) to .gitignore.
++ [ ] Ask the prof if we can open source the project. Then determine 
+      which, if any, open source license to use.
++ [ ] The code is poorly architectured. Ask the prof if we can refactor.
