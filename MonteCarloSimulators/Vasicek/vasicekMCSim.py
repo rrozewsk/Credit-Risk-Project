@@ -85,7 +85,8 @@ class MC_Vasicek_Sim(object):
         self.ntimes = len(self.datelistlong)
         self.libor=[]
         self.smallLibor = []
-
+        self.liborAvg=pd.DataFrame()
+        
     def getLibor(self):
         """Executes the simulations and returns the simulated libor curves.
 
@@ -108,10 +109,12 @@ class MC_Vasicek_Sim(object):
         integralR = r.cumsum(axis=0)*self.t_step
     #calculate Libor
         self.libor = np.exp(-integralR)
-        
+        self.liborAvg=np.average(self.libor,axis=1)
+        self.libor=np.c_[self.liborAvg,self.libor]
+        self.libor = pd.DataFrame(self.libor,index=self.datelistlong)
         return self.libor
 
-    def getSmallLibor(self,datelist=None):
+    def getSmallLibor(self, x=[], tenors=[], simNumber=1):
         """ Returns a matrix of simulated Libor values corresponding to
         the dates of datelist.
 
@@ -128,12 +131,12 @@ class MC_Vasicek_Sim(object):
         (as is the case with getLibor()).
         """
         #calculate indexes
-        if(datelist is None):
-            datelist=self.datelist
-        ind = self.return_indices1_of_a(self.datelistlong, datelist)
-        df=DataFrame(self.getLibor())
-        self.smallLibor=df.loc[ind]
-        return self.smallLibor
+        # Get Libor simulated Curves for specific tenors or for all tenors if no datelist is provided
+        # calculate indexes
+        if (len(self.libor) == 0):
+            self.getLibor()
+        self.smallLibor = self.libor.loc[tenors]
+        return pd.DataFrame(self.smallLibor, index=tenors)
 
 #####################################################################################
     def saveMeExcel(self):

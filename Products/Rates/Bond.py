@@ -50,5 +50,5 @@ datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M")
 
 coupon=.03
 libor=MC_Vasicek_Sim(x=xR,simNumber=simNumber,t_step=t_step,datelist=datelist)
-myBond=Bond(start=trim_start,maturity=trim_end,coupon=coupon,frequency='3M',reference_date=trim_start,libor=libor.getSmallLibor(datelist=datelist))
+myBond=Bond(start=trim_start,maturity=trim_end,coupon=coupon,frequency='3M',reference_date=trim_start,libor=libor.getSmallLibor(x=xR,tenors=datelist,simNumber=simNumber))
 print(myBond.PV())
