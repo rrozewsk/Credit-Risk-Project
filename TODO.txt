@@ -25,7 +25,7 @@
 ### Other goals ###
 
 + [ ] Include docstrings on ALL modules, classes, and public methods.
-    - [ ] MonteCarloSimulators/Vasicek/vasicekMCSim.py
+    - [x] MonteCarloSimulators/Vasicek/vasicekMCSim.py
     - [ ] Products/Credit/CDS.py
     - [ ] Products/Rates/Bond.py
     - etc. 
