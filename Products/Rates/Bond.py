@@ -45,6 +45,9 @@ class Bond(object):
     def getYield(self):
         pass
     
+    def calculateFcurve(self,params):
+        pass
+    
     def calibrateCurve(self,fcurve,x):
         fSum=np.sum(fcurve)
         xSum=np.sum(x)
