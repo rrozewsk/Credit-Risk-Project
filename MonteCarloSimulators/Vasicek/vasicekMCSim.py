@@ -18,14 +18,14 @@ Example
                 '2014-04-01']
     # run 500 simulations
     simNumber = 500
-    # Define Vasicek perameters
+    # Define Vasicek perameters: kappa, theta. sigma, r0
     x = (2.3, .043, .055, .022)
     # Instantiate MonteCarlo class
     simulator = MC_Vasicek_Sim(datelist = datelist, x = x, 
                                simNumber = simNumber)
-    # Get mean LIBOR values for the 500 simulations for the first day
-      of each month
-    avgLibor = simulator.getLibor()[0]
+    # Get mean LIBOR values for the 500 simulations corresponding
+    # to the first day of each month
+    avgLibor = simulator.liborAvg
 """
 
 from pandas import DataFrame
@@ -34,7 +34,7 @@ import pandas as pd
 from parameters import WORKING_DIR
 import os
 import bisect
-__author__ = 'ryanrozewski'
+__author__ = 'ryanrozewski, michaelkovarik'
 
 
 class MC_Vasicek_Sim(object):
@@ -49,7 +49,7 @@ class MC_Vasicek_Sim(object):
     r0 (float): Vasicek perameter: 'initial value'.
     t_step (float): The time difference between the 'steps' in the 
         simulation. Represents 'dt' in the Vasicek model. Should always
-        be set to 1.
+        be set to 1 day.
     simNumber (int): The number of times the simulation is to execute.
     datelist (list): A list of strings that are date-formatted (e.g.
         '2016-10-17').
@@ -57,15 +57,29 @@ class MC_Vasicek_Sim(object):
         min(datelist) and max(datelist). Each element is of type 
         datetime.date.
     ntimes (list):  The length of datelistlong.
-    libor (numpy.ndarray): A (1 + ntimes, simNumber) shaped array that 
-        contains the simulated discount curves. The zeroth column 
+    libor (pandas DataFrame): A (1 + ntimes, simNumber) shaped array 
+        that  contains the simulated discount curves. The zeroth column 
         contains the mean curve. The type of each element is 
-        numpy.float64.
-    smallLibor (pandas.core.frame.DataFrame): A matrix subset of the 
+        numpy.float64. The row labels are dates corresponding to
+        nodes in the simulation.
+    smallLibor (pandas DataFrame): A matrix subset of the 
         libor array. But it only contains rows corresponding to the 
         dates in `datelist` instead of `datelistlong`.
+    liborAvg (numpy ndarray): A vector containing the mean
+        simulated libor values. It is also the zeroth column of 
+        `libor`.
     """
-    def __init__(self, datelist,x, simNumber,t_step = 1):
+    def __init__(self, datelist,x, simNumber):
+        """
+        Perameters
+        ----------
+        datelist (list): A list of strimgs that are date-formatted,
+            e.g. '2012-04-16'.
+        x (tuple): A 4-tuple containing the Vasicek SDE perameters:
+            kappa, theta, sigma, r0.
+        simNumber (int): The number of simulations that is to be 
+            executed.
+        """
     #SDE parameters - Vasicek SDE
     # dr(t) = k(θ − r(t))dt + σdW(t)
         self.kappa = x[0]
@@ -92,10 +106,11 @@ class MC_Vasicek_Sim(object):
 
         Returns
         -------
-        A large 2D numpy ndarray. Each column represents a simulated value of
+        A large 2D pandoc DataFrame. Each column represents a simulated value of
         the libor curve at a given point in time. Each row corresponds to a
         date in `datelonglist`. The zeroth column contains the mean value of
-        the simulated libor curves.
+        the simulated libor curves. The row labels are the elements of 
+        datelonglist.
         """
         rd = np.random.standard_normal((self.ntimes,self.simNumber))   # array of numbers for the number of samples
         r = np.zeros(np.shape(rd))
@@ -118,10 +133,12 @@ class MC_Vasicek_Sim(object):
         """ Returns a matrix of simulated Libor values corresponding to
         the dates of datelist.
 
-        Arguments
-        ---------
-        datelist (list): Optional. A list of strings that are date
-            formatted. Defaults to the object's `datelist` value.
+        Perameters
+        ----------
+        x: Optional. Does nothing.
+        tenors (list): Optional. A list of strings that are date
+            formatted.
+        simNumber: Optional. Does nothing.
 
         Returns
         -------
@@ -156,4 +173,3 @@ class MC_Vasicek_Sim(object):
         for item in a:
             index.append(bisect.bisect(b,item))
         return np.unique(index).tolist()
-
