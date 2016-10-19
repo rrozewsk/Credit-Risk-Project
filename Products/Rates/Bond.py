@@ -45,7 +45,11 @@ class Bond(object):
     def getYield(self):
         pass
     
-    def calculateFcurve(self,params):
+    def calculateFcurve(self,libor):
+        #I think what we want to do here is tune the parameters of the interest rate model
+        # So we want to create a method from within the montecarlo simulators to get the theta kappa and sigma
+        # then we pass it to the calibrate and it gives us a min error and we compare the errors and choose the 
+        # params with the least errors and then we can set the libor models params to these new found best tuned params
         pass
     
     def calibrateCurve(self,fcurve,x):

@@ -34,7 +34,7 @@ import pandas as pd
 from parameters import WORKING_DIR
 import os
 import bisect
-__author__ = 'ryanrozewski, michaelkovarik'
+__author__ = 'ryanrozewski, michaelkovarik,'
 
 
 class MC_Vasicek_Sim(object):
@@ -69,7 +69,7 @@ class MC_Vasicek_Sim(object):
         simulated libor values. It is also the zeroth column of 
         `libor`.
     """
-    def __init__(self, datelist,x, simNumber):
+    def __init__(self, datelist,x, simNumber,t_step):
         """
         Perameters
         ----------
@@ -155,6 +155,21 @@ class MC_Vasicek_Sim(object):
         self.smallLibor = self.libor.loc[tenors]
         return pd.DataFrame(self.smallLibor, index=tenors)
 
+    def setParams(self,x):
+        self.kappa = x[0]
+        self.theta = x[1]
+        self.sigma = x[2]
+        self.r0 = x[3]
+    
+    def getParams(self):
+        return [self.kappa,self.theta,self.sigma,self.r0]
+
+    def getLiborAvg(self):
+        if(len(self.libor) == 0):
+            self.getLibor()
+            return self.libor[0]
+        else:
+            return self.libor[0]
 #####################################################################################
     def saveMeExcel(self):
         """ Saves the value of 'libor' as OpenXML spreadsheet.
