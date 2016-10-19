@@ -8,5 +8,3 @@ class CDS(object):
         self.coupon=coupon
         self.refDate=refDate
         self.q=Q
-
-    def

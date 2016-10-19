@@ -170,6 +170,21 @@ class MC_Vasicek_Sim(object):
             return self.libor[0]
         else:
             return self.libor[0]
+    def setLibor(self,libor):
+        self.libor=libor
+    def getTstep(self):
+        return self.t_step
+    def getDatelist(self):
+        return self.datelist
+    def setTstep(self,t_step):
+        self.t_step=t_step
+    def setDatelist(self,datelist):
+        self.datelist=datelist
+    def getSimNum(self):
+        return self.simNumber
+    def setSimNum(self,simNum):
+        self.simNumber=simNum
+
 #####################################################################################
     def saveMeExcel(self):
         """ Saves the value of 'libor' as OpenXML spreadsheet.

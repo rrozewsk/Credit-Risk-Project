@@ -5,7 +5,7 @@ from Scheduler import Scheduler
 from parameters import xR,simNumber,trim_start,trim_end,t_step
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from scipy.optimize import minimize
-
+import datetime
 
 
 
@@ -53,17 +53,18 @@ class Bond(object):
         pass
     
     def calibrateCurve(self,fcurve,x):
-        fSum=np.sum(fcurve)
-        xSum=np.sum(x)
         error=0
-        error=minimize((fSum-xSum)**2)
+        error=minimize(np.sum(fcurve-x)**2)
         return error
 
 
 myScheduler=Scheduler.Scheduler()
 datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M")
 
-coupon=.03
+coupon=.05
 libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=datelist)
-myBond=Bond(start=trim_start,maturity=trim_end,coupon=coupon,frequency='3M',reference_date=trim_start,libor=libor.getSmallLibor(x=xR,tenors=datelist,simNumber=500))
+
+myBond=Bond(start=trim_start,maturity=trim_end,coupon=coupon,frequency='3M',reference_date=datetime.date(2005, 3, 30),libor=libor.getSmallLibor(x=xR,tenors=datelist,simNumber=500))
 print(myBond.PV())
+
+
