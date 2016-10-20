@@ -1,70 +1,106 @@
 __author__ = 'ryanrozewski'
 import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from Scheduler import Scheduler
-from parameters import xR,simNumber,trim_start,trim_end,t_step
+from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from scipy.optimize import minimize
 import datetime
 
-
-
-#every class should probably have a reference date if it is not in the future then problem
-#each product has a start and reference date, should be flexible
-#reference can be used to calculate EXPECTED POSITIVE EXPOSURE 
-#or expected negative exposure. which is the PV of netting node in the future
-class Bond(object):
-    def __init__(self, libor, coupon, start,maturity,frequency,reference_date):
-        self.libor=libor
+class CouponBond(object):
+    def __init__(self, fee, coupon, start, maturity, freq, referencedate, observationdate):
+        self.fee = fee
         self.coupon=coupon
-        schedule=Scheduler.Scheduler()
-        self.delay=schedule.extractDelay(freq=frequency)
-        self.datelist=schedule.getDatelist(start=start,end=maturity,freq=frequency,ref_date=reference_date)
+        self.start = start
+        self.maturity = maturity
+        self.freq= freq
+        self.referencedate = referencedate
+        self.observationdate = observationdate
+        self.myScheduler = Scheduler.Scheduler()
+        self.delay = self.myScheduler.extractDelay(freq=freq)
+        self.getScheduleComplete()
         self.ntimes=len(self.datelist)
+        self.referencedate = referencedate
         self.pvAvg=0.0
-        self.ntimes = np.shape(self.libor)[0]
-        self.ntrajectories = np.shape(self.libor)[1]
         self.cashFlows = DataFrame()
-        self.reference_date=reference_date
-        return
-    #this function is missing the usage of libor 
-    #missing the discounting of cashflows plus principal to get PV
-    #
-    def PV(self):
+        self.cashFlowsAvg = []
+        self.yieldIn = 0.0
+
+    def getScheduleComplete(self):
+        self.datelist = self.myScheduler.getSchedule(start=self.start,end=self.maturity,freq=self.freq,referencedate=self.referencedate)
+        fullset = list(sorted(list(set(self.datelist)
+                                   .union([self.referencedate])
+                                   .union([self.start])
+                                   .union([self.maturity])
+                                   .union([self.observationdate])
+                                   )))
+        return fullset,self.datelist
+
+    def setLibor(self,libor):
+        self.libor = libor/libor.loc[self.referencedate]
+        self.ntimes = np.shape(self.datelist)[0]
+        self.ntrajectories = np.shape(self.libor)[1]
+        self.ones = np.ones(shape=[self.ntrajectories])
+
+    def getExposure(self, referencedate):
+        if self.referencedate!=referencedate:
+            self.referencedate=referencedate
+            self.getScheduleComplete()
         deltaT= np.zeros(self.ntrajectories)
-        ones = np.ones(shape=[self.ntrajectories])
         for i in range(1,self.ntimes):
-            deltaTrow = ((self.datelist[i]-self.datelist[i-1]).days/365)*ones
+            deltaTrow = ((self.datelist[i]-self.datelist[i-1]).days/365)*self.ones
             deltaT = np.vstack ((deltaT,deltaTrow) )
         self.cashFlows= self.coupon*deltaT
-        principal = ones
+        principal = self.ones
         self.cashFlows[self.ntimes-1,:] +=  principal
-        pv = self.cashFlows*self.libor
-        self.pvAvg = np.average(pv,axis=1)
-        return self.pvAvg
-    def getYield(self):
-        pass
-    
-    def calculateFcurve(self,libor):
-        #I think what we want to do here is tune the parameters of the interest rate model
-        # So we want to create a method from within the montecarlo simulators to get the theta kappa and sigma
-        # then we pass it to the calibrate and it gives us a min error and we compare the errors and choose the 
-        # params with the least errors and then we can set the libor models params to these new found best tuned params
-        pass
-    
-    def calibrateCurve(self,fcurve,x):
-        error=0
-        error=minimize(np.sum(fcurve-x)**2)
+        if(self.datelist[0]<= self.start):
+            self.cashFlows[self.start]=-self.fee
+        self.cashFlowsAvg = self.cashFlows.mean(axis=1)
+        pv = self.cashFlows*self.libor.loc[self.datelist]
+        self.pv = pv.sum(axis=0)
+        self.pvAvg = np.average(self.pv)
+        return self.pv
+
+    def getPV(self,referencedate):
+        self.getExposure(referencedate=referencedate)
+        return self.pv/self.libor.loc[self.observationdate]
+
+    def getLiborAvg(self, yieldIn, datelist):
+        self.yieldIn = yieldIn
+        time0 = datelist[0]
+        # this function is used to calculate exponential single parameter (r or lambda) Survival or Libor Functions
+        Z = np.exp(-self.yieldIn * pd.DataFrame(np.tile([(x - time0).days / 365.0 for x in self.datelist], reps=[self.ntrajectories,1]).T,index=self.datelist))
+        return Z
+
+    def getYield(self,price):
+        # Fit model to curve data
+        yield0 = 0.05 * self.ones
+        self.price = price
+        self.yieldIn = self.fitModel2Curve(x=yield0)
+        return self.yieldIn
+
+
+    def fitModel2Curve(self, x ):
+        # Minimization procedure to fit curve to model
+        results = minimize(fun=self.fCurve, x0=x)
+        return results.x
+
+    def fCurve(self, x):
+        # raw data error function
+        calcCurve = self.getLiborAvg(x, self.datelist)
+        thisPV = np.multiply(self.cashFlows,calcCurve).mean(axis=1).sum(axis=0)
+        error = 1e4 * (self.price - thisPV) ** 2
         return error
 
 
 myScheduler=Scheduler.Scheduler()
-datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M")
+datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M",referencedate=datetime.date(2005, 3, 30))
 
 coupon=.05
 libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=datelist)
 
-myBond=Bond(start=trim_start,maturity=trim_end,coupon=coupon,frequency='3M',reference_date=datetime.date(2005, 3, 30),libor=libor.getSmallLibor(x=xR,tenors=datelist,simNumber=500))
-print(myBond.PV())
 
-
+myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=trim_start,observationdate=trim_start)
+myBond.setLibor(libor.getLibor())
+print(myBond.getPV(referencedate=trim_start))
