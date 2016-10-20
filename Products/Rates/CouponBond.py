@@ -94,13 +94,9 @@ class CouponBond(object):
         return error
 
 
-myScheduler=Scheduler.Scheduler()
-datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M",referencedate=datetime.date(2005, 3, 30))
-
-coupon=.05
-libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=datelist)
-
-
-myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=trim_start,observationdate=trim_start)
-myBond.setLibor(libor.getLibor())
-print(myBond.getPV(referencedate=trim_start))
+#myScheduler=Scheduler.Scheduler()
+#datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M",referencedate=datetime.date(2005, 3, 30))
+#coupon=.05
+#libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=datelist)
+#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=trim_start,observationdate=trim_start)
+#myBond.setLibor(libor.getLibor())
