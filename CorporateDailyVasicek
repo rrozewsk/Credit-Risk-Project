@@ -84,16 +84,21 @@ class CorporateRates(object):
     # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).  
     # It returns a dict of curves read directly from the corporate rates created by getCorporatesFred.
     # Derive delays from self.corporates[rating].columns
-        myDelays = self.myScheduler.extractDelay(freq=list(self.corporates[rating].columns))
         if datelist is None:
             return
         outCurve = {}
+        self.corporates=self.getCorporatesFred(trim_start=min(datelist), trim_end=max(datelist))
+        myDelays = self.myScheduler.extractDelay(freq=list(self.corporates[rating].columns))
+
         for day in datelist:
         # Create curves
         # ..............
         # ..............
         # add curve to outcurve dict
+            
+            myCurve=self.corporates[rating,myDelays]
             outCurve[day]=myCurve
+        print(outCurve)
         return outCurve
 
     def getCorporateQData(self, rating, datelist=None, R=0.4):
@@ -105,6 +110,7 @@ class CorporateRates(object):
         # Create Q curves using q-tilde equation
         # ..............
         # ..............
+            myCurve=[]
             outCurve[day]=myCurve
         return outCurve
 
@@ -131,6 +137,8 @@ class CorporateRates(object):
         except:
             df = whichdata
         df.to_excel(fileName)
+
+
 
 # Class OIS
 class OIS(object):

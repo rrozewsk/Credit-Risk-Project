@@ -3,10 +3,12 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from Scheduler import Scheduler
-from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas
+from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas,start,referenceDate
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from scipy.optimize import minimize
 import datetime
+from Curves.Corporates import CorporateDaily
+
 
 class CouponBond(object):
     def __init__(self, fee, coupon, start, maturity, freq, referencedate, observationdate):
@@ -94,9 +96,15 @@ class CouponBond(object):
         return error
 
 
-#myScheduler=Scheduler.Scheduler()
-#datelist=myScheduler.getSchedule(start=trim_start, end=trim_end, freq="3M",referencedate=datetime.date(2005, 3, 30))
-#coupon=.05
-#libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=datelist)
-#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=trim_start,observationdate=trim_start)
-#myBond.setLibor(libor.getLibor())
+myrates=CorporateDaily.CorporateRates()
+
+
+
+coupon=.05
+
+myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,observationdate=trim_start)
+fullist,datelist=myBond.getScheduleComplete()
+libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
+myBond.setLibor(libor.getLibor())
+print(np.exp(myrates.getCorporateData('AAA',datelist=fullist)))
+
