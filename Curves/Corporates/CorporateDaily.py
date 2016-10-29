@@ -117,6 +117,7 @@ class OIS(object):
         else:
             return self.OIS
 '''
+from pandas.stats.tests.common import COLS
 __author__ = 'marcopereira'
 #edited by ryanrozewski
 import numpy as np
@@ -206,16 +207,35 @@ class CorporateRates(object):
         if datelist is None:
             return
         outCurve = {}
-        myDelays = self.myScheduler.extractDelay(freq=list(self.corporates[rating].columns))
+        #need an iteratble object
+        cols=list(self.corporates[rating].columns)
+        myDelays=[]
+        #just putting an iterable object together
+        for i in range(0,len(cols)):
+            myDelays.append(self.myScheduler.extractDelay(freq=cols[i]))
         myCurve=self.corporates[rating]
+        #grabbing only the info with the rating I want and making a datelist to calulate time differences
         for day in datelist:
+            dates=[(myDelays[x]+day) for x in range(0,len(myDelays))]
+        #my array of interest rates
+        r=np.zeros((len(datelist),len(dates)))
+        nrows=len(dates)
+        #multiplying the rate by the delta t in days and saving it to a spot in the array
+        for j in range(0,len(datelist)):
+            day_tenors=myCurve.loc[datelist[j]]
+            for i in range(0,len(day_tenors)):
+                 r[j,i]=r[j,i]+day_tenors[i-1]*(dates[i]-datelist[j]).days/365
         # Create curves
         # ..............
         # ..............
         # add curve to outcurve dict
-            outCurve[day]=myCurve.loc[day]
+        #integrating and taking e^-
+        intR=r.cumsum(axis=0)
+        outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
-        out=out.transpose()
+        out.columns=cols
+        out.rows=datelist
+        
         return out
 
     def getCorporateQData(self, rating, datelist=None, R=0.4):
@@ -226,9 +246,10 @@ class CorporateRates(object):
         for day in datelist:
         # Create Q curves using q-tilde equation
         # ..............
-        # ..............
-            myCurve=[]
-            outCurve[day]=myCurve
+        # .........
+            Q=(1/1-R)*(1+self.getCorporateData(rating=rating, datelist=datelist/self.getCorporateData(rating='OIS',datelist=datelist)))
+            print(Q)
+            outCurve[day]
         return outCurve
 
 
