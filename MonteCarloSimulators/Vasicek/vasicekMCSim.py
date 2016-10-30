@@ -155,35 +155,12 @@ class MC_Vasicek_Sim(object):
         self.smallLibor = self.libor.loc[tenors]
         return pd.DataFrame(self.smallLibor, index=tenors)
 
-    def setParams(self,x):
-        self.kappa = x[0]
-        self.theta = x[1]
-        self.sigma = x[2]
-        self.r0 = x[3]
-    
-    def getParams(self):
-        return [self.kappa,self.theta,self.sigma,self.r0]
-
     def getLiborAvg(self):
         if(len(self.libor) == 0):
             self.getLibor()
             return self.libor[0]
         else:
             return self.libor[0]
-    def setLibor(self,libor):
-        self.libor=libor
-    def getTstep(self):
-        return self.t_step
-    def getDatelist(self):
-        return self.datelist
-    def setTstep(self,t_step):
-        self.t_step=t_step
-    def setDatelist(self,datelist):
-        self.datelist=datelist
-    def getSimNum(self):
-        return self.simNumber
-    def setSimNum(self,simNum):
-        self.simNumber=simNum
 
 #####################################################################################
     def saveMeExcel(self):
