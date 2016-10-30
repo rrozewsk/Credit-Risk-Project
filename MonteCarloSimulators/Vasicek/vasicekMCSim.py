@@ -32,6 +32,7 @@ from pandas import DataFrame
 import numpy as np
 import pandas as pd
 from parameters import WORKING_DIR
+from perameters import 
 import os
 import bisect
 __author__ = 'ryanrozewski, michaelkovarik,'
@@ -161,6 +162,29 @@ class MC_Vasicek_Sim(object):
             return self.libor[0]
         else:
             return self.libor[0]
+
+    def fitPerams(discountCurves):
+        """Finds the SDE perameters of best fit for a given discount curve
+
+        Perameters
+        ----------
+        discountCurves : pandoc DataFrame
+            A dataFrame consisting of sample discount curves. The columns each contain
+            one discount curve. The rows are labeled by dates.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the SDE perameters
+        """
+        def error(perams):
+            simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = perams, 
+                                       simNumber = 100, t_step = 1.0 / 365)
+            simulatedCurve = simulator.getLiborAvg()
+            return np.sum((simulatedCurve - discountCurve) ** 2) # sum of squares
+        initValues = [0.000377701101971, 0.06807420742631265, 0.020205128906558, 0.002073084987793]
+        return scipy.minimize(error, initValues)
+
 
 #####################################################################################
     def saveMeExcel(self):
