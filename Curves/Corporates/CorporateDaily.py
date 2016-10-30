@@ -234,7 +234,6 @@ class CorporateRates(object):
         outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
         out.columns=cols
-        out.rows=datelist
         
         return out
 
@@ -242,15 +241,11 @@ class CorporateRates(object):
         self.R = R
         if datelist is None:
             return
-        outCurve = {}
-        for day in datelist:
         # Create Q curves using q-tilde equation
-        # ..............
-        # .........
-            Q=(1/1-R)*(1+self.getCorporateData(rating=rating, datelist=datelist/self.getCorporateData(rating='OIS',datelist=datelist)))
-            print(Q)
-            outCurve[day]
-        return outCurve
+        outCurve=((1-(1/1-R)*(1-self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist))).values).tolist()
+        out=pd.DataFrame(outCurve,index=datelist)
+        out.columns=self.corporates[rating].columns
+        return out
 
 
     def pickleMe(self):
