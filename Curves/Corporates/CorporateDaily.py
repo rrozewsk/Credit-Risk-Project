@@ -1,4 +1,4 @@
-'''__author__ = 'marcopereira'
+__author__ = 'marcopereira'
 import numpy as np
 import pandas as pd
 import quandl

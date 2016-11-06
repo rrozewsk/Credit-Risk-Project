@@ -39,7 +39,7 @@ __author__ = 'ryanrozewski, michaelkovarik,'
 
 
 class MC_Vasicek_Sim(object):
-    """ Monte Carlo simulator for interest rates under the Vasicek 
+    """ Monte Carlo simulator for interest rates under the Vasicek
     model.
 
     Attributes
@@ -156,6 +156,21 @@ class MC_Vasicek_Sim(object):
         self.smallLibor = self.libor.loc[tenors]
         return pd.DataFrame(self.smallLibor, index=tenors)
 
+<<<<<<< Updated upstream
+=======
+    def setParams(self,x):
+        self.kappa = x[0]
+        self.theta = x[1]
+        self.sigma = x[2]
+        self.r0 = x[3]
+    
+    def getParams(self):
+        ## Estimate the parameters in the vasicek model ##
+
+
+        return [self.kappa,self.theta,self.sigma,self.r0]
+
+>>>>>>> Stashed changes
     def getLiborAvg(self):
         if(len(self.libor) == 0):
             self.getLibor()
