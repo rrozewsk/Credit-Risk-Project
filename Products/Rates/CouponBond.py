@@ -29,6 +29,7 @@ class CouponBond(object):
         self.cashFlowsAvg = []
         self.yieldIn = 0.0
 
+        
     def getScheduleComplete(self):
         self.datelist = self.myScheduler.getSchedule(start=self.start,end=self.maturity,freq=self.freq,referencedate=self.referencedate)
         fullset = list(sorted(list(set(self.datelist)
@@ -99,12 +100,11 @@ class CouponBond(object):
 myrates=CorporateDaily.CorporateRates()
 
 
-
 coupon=.05
 
 myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,observationdate=trim_start)
 fullist,datelist=myBond.getScheduleComplete()
 libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
-myBond.setLibor(libor.getLibor())
-print(myrates.getCorporateQData('AAA',datelist=[trim_start],R=.4))
+myBond.setLibor(libor=libor.getLibor())
+print(myrates.getSpreads(rating='AAA', datelist=datelist))
 

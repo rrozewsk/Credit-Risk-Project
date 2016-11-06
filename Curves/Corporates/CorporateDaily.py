@@ -234,7 +234,29 @@ class CorporateRates(object):
         outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
         out.columns=cols
-        
+        return out
+
+    def getSpreads(self, rating, datelist=None):
+        if datelist is None:
+            return
+        outCurve = {}
+        #need an iteratble object
+        #just putting an iterable object together
+        myCurve=self.corpSpreads[rating]
+        #grabbing only the info with the rating I want and making a datelist to calulate time differences
+        #my array of interest rates
+        r=np.zeros(len(datelist))
+        #multiplying the rate by the delta t in days and saving it to a spot in the array
+        for j in range(1,len(datelist)):
+            r[j]=r[j-1]+myCurve['VALUE'].loc[j-1]*(datelist[j]-datelist[j-1]).days/365
+        # Create curves
+        # ..............
+        # ..............
+        # add curve to outcurve dict
+        #integrating and taking e^-
+        intR=r.cumsum(axis=0)
+        outCurve=np.exp(-intR)
+        out=pd.DataFrame(outCurve,index=datelist)
         return out
 
     def getCorporateQData(self, rating, datelist=None, R=0.4):
