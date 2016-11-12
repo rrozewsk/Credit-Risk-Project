@@ -156,8 +156,8 @@ class MC_Vasicek_Sim(object):
         self.smallLibor = self.libor.loc[tenors]
         return pd.DataFrame(self.smallLibor, index=tenors)
 
-<<<<<<< Updated upstream
-=======
+
+
     def setParams(self,x):
         self.kappa = x[0]
         self.theta = x[1]
@@ -170,7 +170,7 @@ class MC_Vasicek_Sim(object):
 
         return [self.kappa,self.theta,self.sigma,self.r0]
 
->>>>>>> Stashed changes
+
     def getLiborAvg(self):
         if(len(self.libor) == 0):
             self.getLibor()
@@ -178,7 +178,7 @@ class MC_Vasicek_Sim(object):
         else:
             return self.libor[0]
 
-    def fitParams(discountCurves):
+    def fitParams(self,discountCurves):
         """Finds the SDE perameters of best fit for a given discount curve
 
         Perameters
@@ -192,15 +192,13 @@ class MC_Vasicek_Sim(object):
         tuple
             A tuple containing the SDE perameters
         """
-        pass
-    
-        def error(params):
-            simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = params, 
-                                       simNumber = 100, t_step = 1.0 / 365)
-            simulatedCurve = simulator.getLiborAvg()
-            return np.sum((simulatedCurve - discountCurves) ** 2) # sum of squares
+    pass
+
+    def error(self,params,discountCurves):
+        simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = params, simNumber = 100, t_step = 1.0 / 365)
+        simulatedCurve = simulator.getLiborAvg()# sum of squares
         initValues = [0.000377701101971, 0.06807420742631265, 0.020205128906558, 0.002073084987793]
-        return minimize(error, initValues)
+    pass
 
 
 #####################################################################################

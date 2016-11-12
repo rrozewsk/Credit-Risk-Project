@@ -1,3 +1,4 @@
+'''
 __author__ = 'marcopereira'
 import numpy as np
 import pandas as pd
@@ -154,6 +155,7 @@ class CorporateRates(object):
         self.R = 0.4
 
     def getCorporatesFred(self, trim_start, trim_end):
+        self.corpSpreads={}
         fred = Fred(api_key=FRED_API_KEY)
         curr_trim_end=trim_start
         if(self.corporates.size!=0):
@@ -313,3 +315,4 @@ class OIS(object):
             return self.OIS.iloc[datelist]
         else:
             return self.OIS
+            
