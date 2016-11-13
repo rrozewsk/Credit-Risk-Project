@@ -106,5 +106,6 @@ myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3
 fullist,datelist=myBond.getScheduleComplete()
 libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
 myBond.setLibor(libor=libor.getLibor())
-print(myrates.getCorporateData(rating='AAA', datelist=[trim_start]))
+myBond.getExposure(referenceDate)
+
 
