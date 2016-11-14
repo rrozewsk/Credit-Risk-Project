@@ -37,7 +37,7 @@ class BootstrapperCDSLadder(object):
                 if(self.freq[i] == self.listCDS[j].freq):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
-                s_quote=orderedCDS[i].getSpread(xQ)
+                s_quotes=0
                 spread[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=s_quote)
         return spread
 

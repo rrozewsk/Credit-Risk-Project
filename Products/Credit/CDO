@@ -1,0 +1,70 @@
+import numpy as np
+import scipy.stats as sc
+
+class CDO(object):
+    def __init__(self,type,LGD,probDefault,correlations,underlyings,copula,notational):
+        self.type=type
+        self.LGD=LGD
+        self.PD=probDefault
+        self.corr=correlations
+        self.underlyings=underlyings
+        self.copula=copula
+        self.notational=notational
+        self.inverse=[]
+        if(self.copula == 'gaussian'):
+            for i in range(0,len(self.PD)):
+                self.inverse.append(sc.norm.ppf(self.PD[i]))
+        self.totalNotational=np.array(self.notational).sum(axis=0)
+        
+
+    
+    def getTranches(self,numberSims,attachPoints):
+        tranches={}
+        attachPoints.sort()
+        attachPoints.append(1)
+        size=[]
+        for i in range(0,len(attachPoints)-1):
+            size.append(attachPoints[i+1] - attachPoints[i])
+        percent=np.zeros(len(size))
+        if(self.copula =='gaussian'):
+            for i in range(0,numberSims):
+                intPercent=[]
+                A=self.calcGaussModel()
+                numDefaults=self.countPotentialDefaults(A)
+                pLoss=self.calculatePloss(numDefaults)
+                for j in range(0,len(attachPoints)-1):
+                    intPercent.append(max(min(attachPoints[j],pLoss),0))
+                percent+np.array(intPercent)
+            percent/numberSims
+            percent.tolist()
+            for k in range(0,len(attachPoints)-1):
+                tranches[attachPoints[k]]=percent[k]
+    
+    def calcGaussModel(self):
+        out=[]
+        np.random.seed(120121)
+        econRand=np.random.standard_normal(0)
+        for i in range(0,len(self.corr)):
+            out.append(self.corr[i]*econRand+np.sqrt((1-self.corr[i]**2))*np.random.standard_normal())
+        return out
+    
+    def countPotentialDefaults(self,vec):
+        out=[]
+        if(not len(self.inverse) == 0):
+            if(len(self.inverse) == len(vec)):
+                for i in range(0,len(self.inverse)):
+                    if(self.inverse[i] > vec[i]):
+                        out.append(1)
+                    else:
+                        out.append(0)
+        return out
+    
+    def calculatePloss(self,defaults):
+        loss=[]
+        out=0
+        if(len(self.notational) == len(defaults) and len(self.LGD) == len(defaults)):
+            for i in range(0,len(defaults)):
+                loss.append(defaults[i]*self.LGD[i]*self.notational[i])
+            out=np.array(loss).sum(axis=0)
+            out=out/self.totalNotational
+            
