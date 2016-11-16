@@ -26,5 +26,5 @@ class BootstrapperCDSLadder(object):
     #  Fit CDS Ladder using Vasicek,CRI,etc Model.  Input parameters are x0 vector
     def CalibrateCurve(self, x0, quotes):
         # Bootstrap CDS Ladder Directly
-        results = minimize(self.getSpreadBootstrapped, x0, (self.myCDS, quotes))
+            results = minimize(self.getSpreadBootstrapped, x0, (self.myCDS, quotes))
         return results.x

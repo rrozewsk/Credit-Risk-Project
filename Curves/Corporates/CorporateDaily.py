@@ -123,6 +123,7 @@ __author__ = 'marcopereira'
 import numpy as np
 import pandas as pd
 import quandl
+from datetime import date
 import pickle, os
 from Scheduler.Scheduler import Scheduler
 from parameters import WORKING_DIR
@@ -154,6 +155,8 @@ class CorporateRates(object):
         self.R = 0.4
 
     def getCorporatesFred(self, trim_start, trim_end):
+        print("Get Corporate Fred")
+        self.corpSpreads = {}
         fred = Fred(api_key=FRED_API_KEY)
         curr_trim_end=trim_start
         if(self.corporates.size!=0):
@@ -166,12 +169,16 @@ class CorporateRates(object):
         self.trim_end = trim_end
         self.OIS = OIS(trim_start=trim_start, trim_end=trim_end)
         self.datesAll = self.OIS.datesAll
+        #print(self.datesAll)
         self.datesAll.columns= [x.upper() for x in self.datesAll.columns]
+        #print(self.datesAll)
         self.datesAll.index = self.datesAll.DATE
         self.OISData = self.OIS.getOIS()
+        #print(self.OISData)
         for i in np.arange(len(self.OISData.columns)):
             freq = self.OISData.columns[i]
             self.tenors.append(self.myScheduler.extractDelay(freq=freq))
+            #print(self.tenors)
         for rating in self.ratings.keys():
             index = self.ratings[rating]
             try:
@@ -185,6 +192,7 @@ class CorporateRates(object):
                 print(e)
                 print(index, " not found")
         self.corpSpreads = pd.Panel.from_dict(self.corpSpreads)
+        #print(self.corpSpreads)
         self.corporates = {}
         self.OISData.drop('DATE', axis=1, inplace=True)
         ntenors = np.shape(self.OISData)[1]
@@ -194,6 +202,7 @@ class CorporateRates(object):
                 self.corporates[rating] = pd.DataFrame(data=(tiledCorps + self.OISData.values),
                                                        index=self.OISData.index, columns=self.OISData.columns)
             except:
+                print(rating)
                 print("Error in addition of Corp Spreads")
         self.corporates['OIS'] = self.OISData
         self.corporates = pd.Panel(self.corporates)
@@ -214,14 +223,23 @@ class CorporateRates(object):
         for i in range(0,len(cols)):
             myDelays.append(self.myScheduler.extractDelay(freq=cols[i]))
         myCurve=self.corporates[rating]
+        #print("My curve")
+        #print(myCurve)
+        #print(myDelays)
         #grabbing only the info with the rating I want and making a datelist to calulate time differences
+
         for day in datelist:
+            #print(day)
             dates=[(myDelays[x]+day) for x in range(0,len(myDelays))]
+            #print(dates)
+
         #my array of interest rates
         r=np.zeros((len(datelist),len(dates)))
+        #print(r)
         nrows=len(dates)
         #multiplying the rate by the delta t in days and saving it to a spot in the array
         for j in range(0,len(datelist)):
+            #print(datelist[j])
             day_tenors=myCurve.loc[datelist[j]]
             for i in range(0,len(day_tenors)):
                  r[j,i]=r[j,i]+day_tenors[i-1]*(dates[i]-datelist[j]).days/365
@@ -242,7 +260,7 @@ class CorporateRates(object):
         if datelist is None:
             return
         # Create Q curves using q-tilde equation
-        outCurve=((1-(1/1-R)*(1-self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist))).values).tolist()
+        outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
         out=pd.DataFrame(outCurve,index=datelist)
         out.columns=self.corporates[rating].columns
         return out
@@ -291,3 +309,13 @@ class OIS(object):
             return self.OIS.iloc[datelist]
         else:
             return self.OIS
+
+
+##### Test Functions #######
+test = Scheduler()
+#print(pd.Series([10,20,30]))
+getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,11,7))
+test = CorporateRates()
+test.getCorporatesFred(trim_start = date(2010,6,6),trim_end=date(2018,9,6))
+get_q = test.getCorporateQData(rating='CCC',datelist=getDateList,R=0.5)
+print(get_q)

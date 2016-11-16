@@ -32,9 +32,11 @@ from pandas import DataFrame
 import numpy as np
 import pandas as pd
 from parameters import WORKING_DIR
-from perameters import 
+from parameters import xR,t_step
+from Scheduler.Scheduler import Scheduler
 import os
 import bisect
+from datetime import date
 __author__ = 'ryanrozewski, michaelkovarik,'
 
 
@@ -204,3 +206,12 @@ class MC_Vasicek_Sim(object):
         for item in a:
             index.append(bisect.bisect(b,item))
         return np.unique(index).tolist()
+
+######## TEST ##########
+#test = Scheduler()
+#print(pd.Series([10,20,30]))
+#getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,11,7))
+#testMC = MC_Vasicek_Sim(datelist =getDateList ,x =xR , simNumber = 10,t_step = t_step)
+#print(xR)
+#print(testMC.getLibor())
+

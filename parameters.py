@@ -16,6 +16,8 @@ inArrears = True
 freq = '3M'
 periods = ['5Y']
 
+observationdate = minDay = date(2005,1,10) # Observation Date
+
 # % Vasicek initial guesses
 x0Vas = []
 x0Vas.append([0.000377701101971, 0.06807420742631265, 0.020205128906558, 0.002073084987793])
@@ -32,6 +34,7 @@ x0Vas = pd.DataFrame(x0Vas)
 # self.r0 = x[3]
 
 t_step = 1.0 / 365
+fee = 1.0
 xR = [3.0, 0.03, 0.01, 0.03]
 rho = 0.5
 xQ = [3.0, 0.03, 0.01, 0.03]
