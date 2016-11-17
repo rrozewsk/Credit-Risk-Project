@@ -9,6 +9,57 @@ from scipy.optimize import minimize
 import datetime
 from Curves.Corporates import CorporateDaily
 
+'''
+myCollateral = Collateral(M, KI, KC, freqM)
+myCollateral.calcEPE_ENE(EXP=EXP)
+
+M is the minimum amount to be transferred
+KI is the margining threshold for the institution (BANK)
+KC is the margining threshold for the Counterparty
+freqM is the frequency of margin calls ( disregard this in your project - it makes life more difficult).
+
+This might become a group homework in the near future. Currently, I am testing to see how much work is involved.
+
+Once the you have your hands on a working portfolio, it is easy to calculate CVA, FVA, etc.
+
+Below are the methods required to make this script to work
+
+
+the getExposure method in your CouponBond should work if you use this:
+
+def getExposure(self, referencedate):
+    if self.referencedate!=referencedate:
+        self.referencedate=referencedate
+        self.getScheduleComplete()
+    deltaT= np.zeros(self.ntrajectories)
+    if self.ntimes==0:
+        pdzeros= pd.DataFrame(data=np.zeros([1,self.ntrajectories]), index=[referencedate])
+        self.pv=pdzeros
+        self.pvAvg=0.0
+        self.cashFlows=pdzeros
+        self.cashFlowsAvg=0.0
+        return self.pv
+    for i in range(1,self.ntimes):
+        deltaTrow = ((self.datelist[i]-self.datelist[i-1]).days/365)*self.ones
+        deltaT = np.vstack ((deltaT,deltaTrow) )
+    self.cashFlows= self.coupon*deltaT
+    principal = self.ones
+    if self.ntimes>1:
+        self.cashFlows[-1:]+= principal
+    else:
+        self.cashFlows = self.cashFlows + principal
+    if(self.datelist[0]<= self.start):
+        self.cashFlows[0]=-self.fee*self.ones
+
+    if self.ntimes>1:
+        self.cashFlowsAvg = self.cashFlows.mean(axis=1)*self.notional
+    else:
+        self.cashFlowsAvg = self.cashFlows.mean() * self.notional
+    pv = self.cashFlows*self.libor.loc[self.datelist]
+    self.pv = pv.sum(axis=0)*self.notional
+    self.pvAvg = np.average(self.pv)*self.notional
+    return self.pv
+'''
 
 class CouponBond(object):
     def __init__(self, fee, coupon, start, maturity, freq, referencedate, observationdate):
