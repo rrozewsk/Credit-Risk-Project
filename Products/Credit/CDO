@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.stats as sc
 
+
+
 class CDO(object):
     def __init__(self,type,LGD,probDefault,correlations,underlyings,copula,notational):
         self.type=type
@@ -27,23 +29,25 @@ class CDO(object):
             size.append(attachPoints[i+1] - attachPoints[i])
         percent=np.zeros(len(size))
         if(self.copula =='gaussian'):
-            for i in range(0,numberSims):
+            i=0
+            while not i == numberSims:
                 intPercent=[]
                 A=self.calcGaussModel()
                 numDefaults=self.countPotentialDefaults(A)
                 pLoss=self.calculatePloss(numDefaults)
-                for j in range(0,len(attachPoints)-1):
-                    intPercent.append(max(min(attachPoints[j],pLoss),0))
-                percent+np.array(intPercent)
-            percent/numberSims
+                for j in range(1,len(attachPoints)):
+                    intPercent.append(max(min(attachPoints[j],pLoss)-attachPoints[j-1],0)/size[j-1])
+                percent=percent+np.array(intPercent)
+                i+=1
+            percent=percent/numberSims
             percent.tolist()
             for k in range(0,len(attachPoints)-1):
                 tranches[attachPoints[k]]=percent[k]
+        return tranches
     
     def calcGaussModel(self):
         out=[]
-        np.random.seed(120121)
-        econRand=np.random.standard_normal(0)
+        econRand=np.random.standard_normal()
         for i in range(0,len(self.corr)):
             out.append(self.corr[i]*econRand+np.sqrt((1-self.corr[i]**2))*np.random.standard_normal())
         return out
@@ -54,6 +58,7 @@ class CDO(object):
             if(len(self.inverse) == len(vec)):
                 for i in range(0,len(self.inverse)):
                     if(self.inverse[i] > vec[i]):
+                        print(self.inverse[i])
                         out.append(1)
                     else:
                         out.append(0)
@@ -67,4 +72,11 @@ class CDO(object):
                 loss.append(defaults[i]*self.LGD[i]*self.notational[i])
             out=np.array(loss).sum(axis=0)
             out=out/self.totalNotational
-            
+        return out
+    def getChoelsky(self,mat):
+        out=np.array(np.shape(mat))
+        pass
+        
+        
+myCDO=CDO(type='simple',LGD=[.6,.6,.6],probDefault=[.05,.05,.05],correlations=[0,0,0],underlyings='no',copula='gaussian',notational=[1,1,1])
+print(myCDO.getTranches(100,attachPoints=[0,.03,.07]))

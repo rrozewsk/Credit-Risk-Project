@@ -28,6 +28,15 @@ class BootstrapperCDSLadder(object):
         error=1e4*(s_quotes-price)**2
         return error
 
+    def getScheduleComplete(self):
+        self.datelist = self.myScheduler.getSchedule(start=self.start,end=self.maturity,freq=self.freq,referencedate=self.referencedate)
+        fullset = list(sorted(list(set(self.datelist)
+                                   .union([self.referencedate])
+                                   .union([self.start])
+                                   .union([self.maturity])
+                                   .union([self.observationdate])
+                                   )))
+        return fullset,self.datelist
 
     def getSpreadList(self, xQ):
         spread = {}
@@ -37,7 +46,7 @@ class BootstrapperCDSLadder(object):
                 if(self.freq[i] == self.listCDS[j].freq):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
-                s_quotes=0
+                s_quote=0
                 spread[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=s_quote)
         return spread
 
