@@ -32,8 +32,10 @@ from pandas import DataFrame
 import numpy as np
 import pandas as pd
 from parameters import WORKING_DIR
+
 from parameters import xR,t_step
 from Scheduler.Scheduler import Scheduler
+from scipy.optimize import minimize
 import os
 import bisect
 from datetime import date
@@ -73,8 +75,8 @@ class MC_Vasicek_Sim(object):
         `libor`.
     """
     def __init__(self, datelist,x, simNumber,t_step):
-        """
-        Perameters
+
+        """Perameters
         ----------
         datelist (list): A list of strimgs that are date-formatted,
             e.g. '2012-04-16'.
@@ -115,24 +117,25 @@ class MC_Vasicek_Sim(object):
         the simulated libor curves. The row labels are the elements of 
         datelonglist.
         """
+
         rd = np.random.standard_normal((self.ntimes,self.simNumber))   # array of numbers for the number of samples
         r = np.zeros(np.shape(rd))
         nrows = np.shape(rd)[0]
         sigmaDT = self.sigma* np.sqrt(self.t_step)
-    #calculate r(t)
+        #calculate r(t)
         r[1,:] = self.r0+r[1,:]
         for i in np.arange(2,nrows):
             r[i,:] = r[i-1,:]+ self.kappa*(self.theta-r[i-1,:])*self.t_step + sigmaDT*rd[i,:]
-    #calculate integral(r(s)ds)
+        #calculate integral(r(s)ds)
         integralR = r.cumsum(axis=0)*self.t_step
-    #calculate Libor
+        #calculate Libor
         self.libor = np.exp(-integralR)
-        self.liborAvg=np.average(self.libor,axis=1)
-        self.libor=np.c_[self.liborAvg,self.libor]
+        #self.liborAvg=np.average(self.libor,axis=1)
+        #self.libor=np.c_[self.liborAvg,self.libor]
         self.libor = pd.DataFrame(self.libor,index=self.datelistlong)
         return self.libor
 
-    def getSmallLibor(self, x=[], tenors=[], simNumber=1):
+    def getSmallLibor(self, x=[], datelist=[], simNumber=1):
         """ Returns a matrix of simulated Libor values corresponding to
         the dates of datelist.
 
@@ -155,8 +158,22 @@ class MC_Vasicek_Sim(object):
         # calculate indexes
         if (len(self.libor) == 0):
             self.getLibor()
-        self.smallLibor = self.libor.loc[tenors]
-        return pd.DataFrame(self.smallLibor, index=tenors)
+        self.smallLibor = self.libor.loc[datelist]
+        return pd.DataFrame(self.smallLibor, index=datelist)
+
+
+    def setParams(self,x):
+        self.kappa = x[0]
+        self.theta = x[1]
+        self.sigma = x[2]
+        self.r0 = x[3]
+    
+    def getParams(self):
+        ## Estimate the parameters in the vasicek model ##
+
+
+        return [self.kappa,self.theta,self.sigma,self.r0]
+
 
     def getLiborAvg(self):
         if(len(self.libor) == 0):
@@ -165,7 +182,7 @@ class MC_Vasicek_Sim(object):
         else:
             return self.libor[0]
 
-    def fitPerams(discountCurves):
+    def fitParams(self,discountCurves):
         """Finds the SDE perameters of best fit for a given discount curve
 
         Perameters
@@ -179,13 +196,13 @@ class MC_Vasicek_Sim(object):
         tuple
             A tuple containing the SDE perameters
         """
-        def error(perams):
-            simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = perams, 
-                                       simNumber = 100, t_step = 1.0 / 365)
-            simulatedCurve = simulator.getLiborAvg()
-            return np.sum((simulatedCurve - discountCurve) ** 2) # sum of squares
+    pass
+
+    def error(self,params,discountCurves):
+        simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = params, simNumber = 100, t_step = 1.0 / 365)
+        simulatedCurve = simulator.getLiborAvg()# sum of squares
         initValues = [0.000377701101971, 0.06807420742631265, 0.020205128906558, 0.002073084987793]
-        return scipy.minimize(error, initValues)
+    pass
 
 
 #####################################################################################

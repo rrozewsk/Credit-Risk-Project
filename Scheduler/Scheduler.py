@@ -10,7 +10,7 @@ class Scheduler(object):
         pass
 
     def getSchedule(self, start, end, freq,referencedate):
-        return pd.date_range(start=start,end=end,freq=freq).date
+        return pd.date_range(start=referencedate,end=end,freq=freq).date
     
     def getDatelist(self,start,end,freq,ref_date):
         ## Start/End : date object date(YYYY,MM,DD)

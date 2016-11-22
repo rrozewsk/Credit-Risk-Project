@@ -81,9 +81,9 @@ class CDS(object):
 
 
 #### TEST FUNCTIONS ###
-test = CDS(fee = 1,start =date(2005, 1, 20),end = date(2006,4,22), freq = '1M',coupon=Coupon,refDate=date(2005, 6, 30),
-           observationdate=date(2005,3,31) ,rating='AAA',R=0.9999)
-pv = test.getPV(date(2005,1,25))
+#test = CDS(fee = 1,start =date(2005, 1, 20),end = date(2006,4,22), freq = '1M',coupon=Coupon,refDate=date(2005, 6, 30),
+#           observationdate=date(2005,3,31) ,rating='AAA',R=0.9999)
+#pv = test.getPV(date(2005,1,25))
 
 
 ## About referencedate and observationdate ##
@@ -102,3 +102,5 @@ pv = test.getPV(date(2005,1,25))
 #print(vasicek_libor.getLibor())
 #print(get_Q)
 #vasicek.MC_Vasicek_Sim()
+
+

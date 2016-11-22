@@ -13,14 +13,15 @@ from datetime import date
 
 
 class CouponBond(object):
-    def __init__(self, fee, coupon, start, maturity, freq, referencedate, observationdate):
+    def __init__(self, fee, coupon, start, maturity, freq, notional,referencedate):
         self.fee = fee
         self.coupon=coupon
         self.start = start
+        self.notional = notional
         self.maturity = maturity
         self.freq= freq
         self.referencedate = referencedate
-        self.observationdate = observationdate
+        self.observationdate  = referencedate
         self.myScheduler = Scheduler.Scheduler()
         self.delay = self.myScheduler.extractDelay(freq=freq)
         self.getScheduleComplete()
@@ -31,8 +32,10 @@ class CouponBond(object):
         self.cashFlowsAvg = []
         self.yieldIn = 0.0
 
+        
     def getScheduleComplete(self):
         self.datelist = self.myScheduler.getSchedule(start=self.start,end=self.maturity,freq=self.freq,referencedate=self.referencedate)
+        self.ntimes = len(self.datelist)
         fullset = list(sorted(list(set(self.datelist)
                                    .union([self.referencedate])
                                    .union([self.start])
@@ -42,30 +45,44 @@ class CouponBond(object):
         return fullset,self.datelist
 
     def setLibor(self,libor):
-        #print(self.referencedate)
+        #print(libor.head(20))
         self.libor = libor/libor.loc[self.referencedate]
-        #print(self.libor)
-        self.ntimes = np.shape(self.datelist)[0]
+        #print(self.libor.head(20))
+        #self.ntimes = np.shape(self.datelist)[0]
         self.ntrajectories = np.shape(self.libor)[1]
         self.ones = np.ones(shape=[self.ntrajectories])
 
     def getExposure(self, referencedate):
-        if self.referencedate!=referencedate:
-            self.referencedate=referencedate
+        if self.referencedate != referencedate:
+            self.referencedate = referencedate
             self.getScheduleComplete()
-        deltaT= np.zeros(self.ntrajectories)
-        for i in range(1,self.ntimes):
-            deltaTrow = ((self.datelist[i]-self.datelist[i-1]).days/365)*self.ones
-            deltaT = np.vstack ((deltaT,deltaTrow) )
-        self.cashFlows= self.coupon*deltaT
+        deltaT = np.zeros(self.ntrajectories)
+        if self.ntimes == 0:
+            pdzeros = pd.DataFrame(data=np.zeros([1, self.ntrajectories]), index=[referencedate])
+            self.pv = pdzeros
+            self.pvAvg = 0.0
+            self.cashFlows = pdzeros
+            self.cashFlowsAvg = 0.0
+            return self.pv
+        for i in range(1, self.ntimes):
+            deltaTrow = ((self.datelist[i] - self.datelist[i - 1]).days / 365) * self.ones
+            deltaT = np.vstack((deltaT, deltaTrow))
+        self.cashFlows = self.coupon * deltaT
         principal = self.ones
-        self.cashFlows[self.ntimes-1,:] +=  principal
-        if(self.datelist[0]<= self.start):
-            self.cashFlows[self.start]=-self.fee
-        self.cashFlowsAvg = self.cashFlows.mean(axis=1)
-        pv = self.cashFlows*self.libor.loc[self.datelist]
-        self.pv = pv.sum(axis=0)
-        self.pvAvg = np.average(self.pv)
+        if self.ntimes > 1:
+            self.cashFlows[-1:] += principal
+        else:
+            self.cashFlows = self.cashFlows + principal
+        if (self.datelist[0] <= self.start):
+            self.cashFlows[0] = -self.fee * self.ones
+
+        if self.ntimes > 1:
+            self.cashFlowsAvg = self.cashFlows.mean(axis=1) * self.notional
+        else:
+            self.cashFlowsAvg = self.cashFlows.mean() * self.notional
+        pv = self.cashFlows * self.libor.loc[self.datelist]
+        self.pv = pv.sum(axis=0) * self.notional
+        self.pvAvg = np.average(self.pv) * self.notional
         return self.pv
 
     def getPV(self,referencedate):
@@ -98,6 +115,7 @@ class CouponBond(object):
         thisPV = np.multiply(self.cashFlows,calcCurve).mean(axis=1).sum(axis=0)
         error = 1e4 * (self.price - thisPV) ** 2
         return error
+
 
 
 #myrates=CorporateDaily.CorporateRates()
@@ -170,3 +188,15 @@ class CouponBond(object):
 ## Test getYield ##
 #yOpt = myBond.getYield(pv[1])
 #print(yOpt)
+#myrates=CorporateDaily.CorporateRates()
+
+
+#coupon=.05
+
+#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,observationdate=trim_start)
+##fullist,datelist=myBond.getScheduleComplete()
+#libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
+#myBond.setLibor(libor=libor.getLibor())
+#myBond.getExposure(referenceDate)
+
+
