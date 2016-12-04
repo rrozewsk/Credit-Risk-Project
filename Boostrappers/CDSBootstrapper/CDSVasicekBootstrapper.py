@@ -4,7 +4,6 @@ from scipy.optimize import minimize
 
 
 from Products.Credit.CDS import CDS
-
 from parameters import freq
 
 
