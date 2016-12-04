@@ -26,7 +26,6 @@ from Curves.Corporates.CorporateDailyVasicek import CorporateRates
 from Boostrappers.CDSBootstrapper.CDSVasicekBootstrapper import BootstrapperCDSLadder
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from Products.Rates.CouponBond import CouponBond
-from Products.Credit.CDS import CDS
 from Scheduler.Scheduler import Scheduler
 import quandl
 import matplotlib.pyplot as plt
@@ -87,7 +86,6 @@ for t in portfolioScheduleOfCF:
         myPortfolio[i].setLibor(OIS)
         pvs[t] = pvs[t] + myPortfolio[i].getExposure(referencedate=t).values
 
-print(pvs)
 pvsPlot = pd.DataFrame.from_dict(list(pvs.items()))
 pvsPlot.index= list(pvs.keys())
 pvs1={}

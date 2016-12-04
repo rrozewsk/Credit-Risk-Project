@@ -1,8 +1,4 @@
-
-__author__ = 'marcopereira'
-
 from pandas.stats.tests.common import COLS
-__author__ = 'marcopereira'
 #edited by ryanrozewski
 import numpy as np
 import pandas as pd
@@ -99,6 +95,7 @@ class CorporateRates(object):
     # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).  
     # It returns a dict of curves read directly from the corporate rates created by getCorporatesFred.
     # Derive delays from self.corporates[rating].columns
+        print("GEt corporate data ")
         if datelist is None:
             return
         outCurve = {}
@@ -164,11 +161,27 @@ class CorporateRates(object):
         return out
 
     def getCorporateQData(self, rating, datelist=None, R=0.4):
+        print("Get gorporate Q data")
         self.R = R
         if datelist is None:
             return
+
+
+        trim_start = datelist[0]
+        trim_end = datelist[-1]
         # Create Q curves using q-tilde equation
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
+        print(outCurve)
+        getCorpFred = self.getCorporatesFred(trim_start = trim_start,trim_end=trim_end)
+        getCorporateRating = getCorpFred[rating]
+        print(getCorporateRating.head(10))
+
+        ## Get OIS ###
+        getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
+        #print(getOIS.getOIS(datelist = datelist))
+
+        #outCurve = ((1 - (1 / (1 - R)) * (1 - (self.getCorporatesFred(trim_start) / self.getCorporateData(rating='OIS', datelist=datelist)))).values).tolist()
+
         out=pd.DataFrame(outCurve,index=datelist)
         out.columns=self.corporates[rating].columns
         return out
@@ -213,6 +226,7 @@ class OIS(object):
         self.OIS.index = self.datesAll.DATE
 
     def getOIS(self, datelist=[]):
+        #print(self.OIS)
         if (len(datelist) != 0):
             return self.OIS.iloc[datelist]
         else:
@@ -220,13 +234,16 @@ class OIS(object):
 
 
 
+
+
 ##### Test Functions #######
 #test = Scheduler()
-#print(pd.Series([10,20,30]))
-#getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,11,7))
+#getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,2,2))
+#print(getDateList)
 #test = CorporateRates()
-#test.getCorporatesFred(trim_start = date(2010,6,6),trim_end=date(2018,9,6))
-##get_q = test.getCorporateQData(rating='CCC',datelist=getDateList,R=0.5)
+#test.getCorporatesFred(trim_start = date(2013,2,2),trim_end=date(2017,12,28))
+#test.getCorporateData(rating="AAA",datelist=getDateList)
+#get_q = test.getCorporateQData(rating='AAA',datelist=getDateList,R=0.5)
 #print(get_q)
 
 

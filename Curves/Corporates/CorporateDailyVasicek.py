@@ -30,7 +30,7 @@ class CorporateRates(object):
         self.tenors = []
         self.unPickleMe(file=self.filename)
         self.myScheduler=Scheduler()
-        self.myVasicek = MC_Vasicek_Sim()
+        #self.myVasicek = MC_Vasicek_Sim()
         self.R = 0.4
 
     def getCorporatesFred(self, trim_start, trim_end):

@@ -3,13 +3,12 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from Scheduler import Scheduler
-#from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas,start,referenceDate,fee
+from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas,start,referenceDate,fee
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from Curves.Corporates.CorporateDaily import CorporateRates
 from scipy.optimize import minimize
-from Curves.Corporates import CorporateDaily
 from datetime import date
-#from Scheduler.Scheduler import Scheduler
+from Scheduler import Scheduler
 
 '''
 myCollateral = Collateral(M, KI, KC, freqM)
@@ -83,7 +82,6 @@ class CouponBond(object):
         self.cashFlowsAvg = []
         self.yieldIn = 0.0
 
-        
     def getScheduleComplete(self):
         self.datelist = self.myScheduler.getSchedule(start=self.start,end=self.maturity,freq=self.freq,referencedate=self.referencedate)
         self.ntimes = len(self.datelist)
@@ -96,14 +94,17 @@ class CouponBond(object):
         return fullset,self.datelist
 
     def setLibor(self,libor):
-        #print(libor.head(20))
+        print("Set libor CouponBond")
         self.libor = libor/libor.loc[self.referencedate]
+        print(self.libor.head(10))
         #print(self.libor.head(20))
         #self.ntimes = np.shape(self.datelist)[0]
         self.ntrajectories = np.shape(self.libor)[1]
         self.ones = np.ones(shape=[self.ntrajectories])
+        print("// Libor saved ")
 
     def getExposure(self, referencedate):
+        print("Get exposure")
         if self.referencedate != referencedate:
             self.referencedate = referencedate
             self.getScheduleComplete()
@@ -131,12 +132,13 @@ class CouponBond(object):
             self.cashFlowsAvg = self.cashFlows.mean(axis=1) * self.notional
         else:
             self.cashFlowsAvg = self.cashFlows.mean() * self.notional
-        pv = self.cashFlows * self.libor.loc[self.datelist]
+        pv = self.cashFlows * libor.loc[self.datelist]
         self.pv = pv.sum(axis=0) * self.notional
         self.pvAvg = np.average(self.pv) * self.notional
         return self.pv
 
     def getPV(self,referencedate):
+        print("Get PV CouponBond")
         self.getExposure(referencedate=referencedate)
         return self.pv/self.libor.loc[self.observationdate]
 
@@ -169,18 +171,19 @@ class CouponBond(object):
 
 
 
-#myrates=CorporateDaily.CorporateRates()
+#myrates=CorporateRates()
+#myrates.getCorporatesFred(trim_start= trim_start,trim_end=trim_end)
 
 
 
 #coupon=.05
 
 
-#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,observationdate=trim_start)
+#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,notional=1)
 #fullist,datelist=myBond.getScheduleComplete()
 #libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
 #myBond.setLibor(libor.getLibor())
-#print(myrates.getCorporateQData('AAA',datelist=datelist,R=.4))
+#print(myrates.getCorporateQData('AAA',datelist=fullist,R=.4))
 
 ## TEST from MP #####
 #myScheduler = Scheduler.Scheduler()
