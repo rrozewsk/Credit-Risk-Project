@@ -3,13 +3,13 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from Scheduler import Scheduler
-#from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas,start,referenceDate,fee
+from parameters import xR,simNumber,trim_start,trim_end,t_step,x0Vas,start,referenceDate,fee
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from Curves.Corporates.CorporateDaily import CorporateRates
 from scipy.optimize import minimize
 from Curves.Corporates import CorporateDaily
 from datetime import date
-#from Scheduler.Scheduler import Scheduler
+from Scheduler.Scheduler import Scheduler
 
 '''
 myCollateral = Collateral(M, KI, KC, freqM)
@@ -73,7 +73,7 @@ class CouponBond(object):
         self.freq= freq
         self.referencedate = referencedate
         self.observationdate  = referencedate
-        self.myScheduler = Scheduler.Scheduler()
+        self.myScheduler = Scheduler()
         self.delay = self.myScheduler.extractDelay(freq=freq)
         self.getScheduleComplete()
         self.ntimes=len(self.datelist)
@@ -169,18 +169,18 @@ class CouponBond(object):
 
 
 
-#myrates=CorporateDaily.CorporateRates()
+myrates=CorporateDaily.CorporateRates()
 
 
 
-#coupon=.05
+coupon=.05
 
 
-#myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,observationdate=trim_start)
-#fullist,datelist=myBond.getScheduleComplete()
-#libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
-#myBond.setLibor(libor.getLibor())
-#print(myrates.getCorporateQData('AAA',datelist=datelist,R=.4))
+myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3M',referencedate=referenceDate,notional=1)
+fullist,datelist=myBond.getScheduleComplete()
+libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
+myBond.setLibor(libor.getLibor())
+print(myrates.getCorporateQData(datelist=datelist,R=.4,rating='AAA'))
 
 ## TEST from MP #####
 #myScheduler = Scheduler.Scheduler()

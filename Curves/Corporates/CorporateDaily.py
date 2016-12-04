@@ -39,10 +39,7 @@ class CorporateRates(object):
         self.R = 0.4
 
     def getCorporatesFred(self, trim_start, trim_end):
-        print("Get Corporate Fred")
         self.corpSpreads = {}
-        self.corpSpreads={}
-
         fred = Fred(api_key=FRED_API_KEY)
         curr_trim_end=trim_start
         if(self.corporates.size!=0):
@@ -102,12 +99,13 @@ class CorporateRates(object):
         if datelist is None:
             return
         outCurve = {}
+
         #need an iteratble object
         cols=list(self.corporates[rating].columns)
         myDelays=[]
         #just putting an iterable object together
-        for i in range(0,len(cols)):
-            myDelays.append(self.myScheduler.extractDelay(freq=cols[i]))
+        for i in range(1,len(datelist)):
+            myDelays.append(datelist[i]-datelist[i-1])
         myCurve=self.corporates[rating]
         #print("My curve")
         #print(myCurve)
@@ -120,21 +118,21 @@ class CorporateRates(object):
             #print(dates)
 
         #my array of interest rates
-        r=np.zeros((len(datelist),len(dates)))
+        r=np.zeros((len(datelist),len(cols)))
         #print(r)
-        nrows=len(dates)
         #multiplying the rate by the delta t in days and saving it to a spot in the array
+        t0=datelist[0]
         for j in range(0,len(datelist)):
             #print(datelist[j])
             day_tenors=myCurve.loc[datelist[j]]
-            for i in range(0,len(day_tenors)):
-                 r[j,i]=r[j,i]+day_tenors[i-1]*(dates[i]-datelist[j]).days/365
+            for i in range(0,len(cols)):
+                 r[j,i]=r[j-1,i]+day_tenors[i]*(datelist[j]-t0).days/365
         # Create curves
         # ..............
         # ..............
         # add curve to outcurve dict
         #integrating and taking e^-
-        intR=r.cumsum(axis=0)
+        intR=r.cumsum(axis=0)*(1/365)
         outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
         out.columns=cols
@@ -152,7 +150,7 @@ class CorporateRates(object):
         r=np.zeros(len(datelist))
         #multiplying the rate by the delta t in days and saving it to a spot in the array
         for j in range(1,len(datelist)):
-            r[j]=r[j-1]+myCurve['VALUE'].loc[j-1]*(datelist[j]-datelist[j-1]).days/365
+            r[j]=r[j-1]+myCurve['VALUE'].loc[j]*(datelist[j-1]-datelist[j-1]).days/365
         # Create curves
         # ..............
         # ..............
@@ -169,8 +167,11 @@ class CorporateRates(object):
             return
         # Create Q curves using q-tilde equation
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
+        print(outCurve)
         out=pd.DataFrame(outCurve,index=datelist)
-        out.columns=self.corporates[rating].columns
+        cols=list(self.corporates[rating].columns)
+
+        out.columns=cols
         return out
 
 
