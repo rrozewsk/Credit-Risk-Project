@@ -96,7 +96,6 @@ class CouponBond(object):
     def setLibor(self,libor):
         print("Set libor CouponBond")
         self.libor = libor/libor.loc[self.referencedate]
-        print(self.libor.head(10))
         #print(self.libor.head(20))
         #self.ntimes = np.shape(self.datelist)[0]
         self.ntrajectories = np.shape(self.libor)[1]
@@ -104,7 +103,7 @@ class CouponBond(object):
         print("// Libor saved ")
 
     def getExposure(self, referencedate):
-        print("Get exposure")
+
         if self.referencedate != referencedate:
             self.referencedate = referencedate
             self.getScheduleComplete()

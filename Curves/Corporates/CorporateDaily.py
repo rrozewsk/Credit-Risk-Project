@@ -35,7 +35,7 @@ class CorporateRates(object):
         self.R = 0.4
 
     def getCorporatesFred(self, trim_start, trim_end):
-        print("Get Corporate Fred")
+        #print("Get Corporate Fred")
         self.corpSpreads = {}
         self.corpSpreads={}
 
@@ -95,7 +95,7 @@ class CorporateRates(object):
     # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).  
     # It returns a dict of curves read directly from the corporate rates created by getCorporatesFred.
     # Derive delays from self.corporates[rating].columns
-        print("GEt corporate data ")
+        #print("GEt corporate data ")
         if datelist is None:
             return
         outCurve = {}
@@ -161,20 +161,17 @@ class CorporateRates(object):
         return out
 
     def getCorporateQData(self, rating, datelist=None, R=0.4):
-        print("Get gorporate Q data")
+        #print("Get gorporate Q data")
         self.R = R
         if datelist is None:
             return
-
 
         trim_start = datelist[0]
         trim_end = datelist[-1]
         # Create Q curves using q-tilde equation
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
-        print(outCurve)
         getCorpFred = self.getCorporatesFred(trim_start = trim_start,trim_end=trim_end)
         getCorporateRating = getCorpFred[rating]
-        print(getCorporateRating.head(10))
 
         ## Get OIS ###
         getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
@@ -237,13 +234,13 @@ class OIS(object):
 
 
 ##### Test Functions #######
-#test = Scheduler()
-#getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,2,2))
-#print(getDateList)
-#test = CorporateRates()
-#test.getCorporatesFred(trim_start = date(2013,2,2),trim_end=date(2017,12,28))
-#test.getCorporateData(rating="AAA",datelist=getDateList)
-#get_q = test.getCorporateQData(rating='AAA',datelist=getDateList,R=0.5)
-#print(get_q)
+test = Scheduler()
+getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,2,2))
+print(getDateList)
+test = CorporateRates()
+test.getCorporatesFred(trim_start = date(2013,2,2),trim_end=date(2017,12,28))
+test.getCorporateData(rating="AAA",datelist=getDateList)
+get_q = test.getCorporateQData(rating='AAA',datelist=getDateList,R=0.5)
+print(get_q)
 
 

@@ -46,8 +46,8 @@ class CDS(object):
         SixMonthDelay = self.myScheduler.extractDelay("6M")
         TwoYearsDelay = self.myScheduler.extractDelay("2Y")
         ## Delay maturity and start date
-        self.startDate = self.start_date +SixMonthDelay
-        self.maturity =self.startDate + TwoYearsDelay
+        #self.start_date = self.start_date +SixMonthDelay
+        self.maturity =self.start_date + TwoYearsDelay
 
         self.getScheduleComplete()
         portfolioScheduleOfCF = set(ReferenceDateList)
@@ -94,9 +94,15 @@ class CDS(object):
     #//////////////// Get Corporates simulated Q(t,t_j)
     def getQ_Corporate(self):
         ## Use CorporateDaily to get Q for referencedates ##
+        print("GET Q")
+        print(self.portfolioScheduleOfCF)
         myQ = CorporateRates()
+        myQ.getCorporatesFred(trim_start=self.start_date, trim_end=self.end_date)
+        myQ.getCorporateData(rating=self.rating, datelist=self.portfolioScheduleOfCF)
         ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
         self.myQ = myQ.getCorporateQData(rating=self.rating, datelist=self.portfolioScheduleOfCF, R=0.4)
+        print(self.myQ.head(10))
+        print("Q finished ")
 
     #//////////////// Get Premium leg Z(t_i)( Q(t_(i-1)) + Q(t_i) )
     def getPremiumLegZ(self):
@@ -165,11 +171,11 @@ class CDS(object):
     #/////////////////////// Functions to get the exposure sum [delta Z(t,t_j)( Q(t,t_(j-1)) +/- Q(t,t_j) )
     #////// These are copied from Coupon bond
     def getScheduleComplete(self):
-        self.datelist = self.myScheduler.getSchedule(start=self.startDate,end=self.maturity,freq=self.freq,referencedate=self.referenceDate)
+        self.datelist = self.myScheduler.getSchedule(start=self.start_date,end=self.maturity,freq=self.freq,referencedate=self.referenceDate)
         self.ntimes = len(self.datelist)
         fullset = list(sorted(list(set(self.datelist)
                                    .union([self.referenceDate])
-                                   .union([self.startDate])
+                                   .union([self.start_date])
                                    .union([self.maturity])
                                    .union([self.observationDate])
                                    )))
@@ -197,7 +203,7 @@ class CDS(object):
             self.cashFlows[-1:] += principal
         else:
             self.cashFlows = self.cashFlows + principal
-        if (self.datelist[0] <= self.startDate):
+        if (self.datelist[0] <= self.start_date):
             self.cashFlows[0] = -self.fee * self.ones
 
         if self.ntimes > 1:
@@ -237,7 +243,6 @@ referenceDate = date(2005, 3, 10)
 testCDS = CDS(start_date = start_date,end_date=end_date,freq="3M",coupon=1,referenceDate=referenceDate,rating="AAA",R=0)
 getPremLeg = testCDS.getPremiumLegZ()
 getProtectionLeg = testCDS.getProtectionLeg()
-print("Spreads ")
-print(2*getProtectionLeg/getPremLeg)
+
 
 
