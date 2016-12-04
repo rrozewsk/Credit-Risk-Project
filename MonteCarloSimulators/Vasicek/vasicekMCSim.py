@@ -182,28 +182,6 @@ class MC_Vasicek_Sim(object):
         else:
             return self.libor[0]
 
-    def fitParams(self,discountCurves):
-        """Finds the SDE perameters of best fit for a given discount curve
-
-        Perameters
-        ----------
-        discountCurves : pandoc DataFrame
-            A dataFrame consisting of sample discount curves. The columns each contain
-            one discount curve. The rows are labeled by dates.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the SDE perameters
-        """
-    pass
-
-    def error(self,params,discountCurves):
-        simulator = MC_Vasicek_Sim(datelist = list(discountCurves.index), x = params, simNumber = 100, t_step = 1.0 / 365)
-        simulatedCurve = simulator.getLiborAvg()# sum of squares
-        initValues = [0.000377701101971, 0.06807420742631265, 0.020205128906558, 0.002073084987793]
-    pass
-
 
 #####################################################################################
     def saveMeExcel(self):

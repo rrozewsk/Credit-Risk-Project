@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as sc
 
+from scipy.stats import norm
 
 
 class CDO(object):
@@ -15,7 +16,7 @@ class CDO(object):
         self.inverse=[]
         if(self.copula == 'gaussian'):
             for i in range(0,len(self.PD)):
-                self.inverse.append(sc.norm.ppf(self.PD[i]))
+                self.inverse.append(norm.ppf(self.PD[i]))
         self.totalNotational=np.array(self.notational).sum(axis=0)
         
 
@@ -77,6 +78,3 @@ class CDO(object):
         out=np.array(np.shape(mat))
         pass
         
-        
-myCDO=CDO(type='simple',LGD=[.6,.6,.6],probDefault=[.05,.05,.05],correlations=[0,0,0],underlyings='no',copula='gaussian',notational=[1,1,1])
-print(myCDO.getTranches(100,attachPoints=[0,.03,.07]))
