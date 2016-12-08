@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
-
+from parameters import trim_start,trim_end,referenceDate,x0Vas
 
 from Products.Credit.CDS import CDS
 
 from parameters import freq
+from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 
 
 
@@ -23,10 +24,8 @@ class BootstrapperCDSLadder(object):
 
     # %% GetSpread
     def getSpreadBootstrapped(self, xQ, myCDS, s_quotes):
-        calcCurve=myCDS.getSpread(xQ)
-        cashFlows=myCDS.cashFlows
-        price=np.multiply(cashFlows,calcCurve).mean(axis=1).sum(axis=0)
-        error=1e4*(s_quotes-price)**2
+        calcCurve=myCDS.changeGuessForSpread(xQ)
+        error=1e4*(s_quotes-calcCurve[0])**2
         return error
 
     def getScheduleComplete(self):
@@ -47,13 +46,17 @@ class BootstrapperCDSLadder(object):
                 if(self.freq[i] == self.listCDS[j].freq):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
-                s_quote=0
-                spread[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=s_quote)
+                quotes=orderedCDS[i].getSpread()
+                #print(quotes)
+                spread[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i])[0:4]
         return spread
 
     #  Fit CDS Ladder using Vasicek,CRI,etc Model.  Input parameters are x0
     #  QFunCIR  with the name of the Q Model Function
     def CalibrateCurve(self, x0, quotes,myCDS):
         # Bootstrap CDS Ladder Directly
-        results = minimize(self.getSpreadBootstrapped, x0, (myCDS, quotes))
+        results = minimize(self.getSpreadBootstrapped, x0, args=(myCDS, quotes),method='Nelder-Mead')
         return results.x
+lad=BootstrapperCDSLadder(start=trim_start,freq=['3M','6M'],LiborFunc=None,QFunc=None,OISFunc=None,R=.4,CDSList=[CDS(start_date = trim_start,end_date=trim_end,freq="3M",coupon=1,referenceDate=referenceDate,rating="CCC",R=0)])
+vas=MC_Vasicek_Sim(x=lad.getSpreadList(x0Vas)['3M'],datelist=lad.listCDS[0].portfolioScheduleOfCF,t_step=1/365,simNumber=200)
+print(vas.getLibor()[0])

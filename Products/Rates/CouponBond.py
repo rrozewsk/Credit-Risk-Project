@@ -8,11 +8,7 @@ from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from Curves.Corporates.CorporateDaily import CorporateRates
 from scipy.optimize import minimize
 from datetime import date
-<<<<<<< HEAD
-from Scheduler import Scheduler
-=======
 from Scheduler.Scheduler import Scheduler
->>>>>>> origin/master
 
 '''
 myCollateral = Collateral(M, KI, KC, freqM)
@@ -135,7 +131,7 @@ class CouponBond(object):
             self.cashFlowsAvg = self.cashFlows.mean(axis=1) * self.notional
         else:
             self.cashFlowsAvg = self.cashFlows.mean() * self.notional
-        pv = self.cashFlows * libor.loc[self.datelist]
+        pv = self.cashFlows * self.libor.loc[self.datelist]
         self.pv = pv.sum(axis=0) * self.notional
         self.pvAvg = np.average(self.pv) * self.notional
         return self.pv
@@ -172,7 +168,7 @@ class CouponBond(object):
         error = 1e4 * (self.price - thisPV) ** 2
         return error
 
-
+'''
 
 <<<<<<< HEAD
 #myrates=CorporateRates()
@@ -197,8 +193,12 @@ myBond=CouponBond(fee=1,start=trim_start,maturity=trim_end,coupon=coupon,freq='3
 fullist,datelist=myBond.getScheduleComplete()
 libor=MC_Vasicek_Sim(x=xR,simNumber=500,t_step=t_step,datelist=fullist)
 myBond.setLibor(libor.getLibor())
+<<<<<<< Updated upstream
 print(myrates.getCorporateQData(datelist=datelist,R=.4,rating='AAA'))
 >>>>>>> origin/master
+=======
+print(myrates.getCorporateData(datelist=datelist,rating='CCC'))
+>>>>>>> Stashed changes
 
 ## TEST from MP #####
 #myScheduler = Scheduler.Scheduler()
@@ -268,4 +268,4 @@ print(myrates.getCorporateQData(datelist=datelist,R=.4,rating='AAA'))
 #myBond.setLibor(libor=libor.getLibor())
 #myBond.getExposure(referenceDate)
 
-
+'''

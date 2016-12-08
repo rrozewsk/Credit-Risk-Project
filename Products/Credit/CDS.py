@@ -40,7 +40,7 @@ class CDS(object):
 
         ## Get datelist ##
         self.myScheduler = Scheduler()
-        ReferenceDateList = self.myScheduler.getSchedule(start=referenceDate,end=end_date,freq="1M", referencedate=referenceDate)
+        ReferenceDateList = self.myScheduler.getSchedule(start=referenceDate,end=end_date,freq=freq, referencedate=referenceDate)
 
         ## Delay start and maturity
         SixMonthDelay = self.myScheduler.extractDelay("6M")
@@ -86,27 +86,29 @@ class CDS(object):
 
         ## Simulate Vasicek model with paramters given in workspace.parameters
         vasicekMC = MC_Vasicek_Sim(datelist=[self.start_date,self.end_date], x=xR, simNumber=20, t_step=t_step)
-        self.myZ = vasicekMC.getLibor()
+        self.myZ = vasicekMC.getSmallLibor(datelist=self.portfolioScheduleOfCF)
+        
+        self.myLibor=self.myZ
+        self.myZ=self.myZ.loc[:,0]
 
         ## get Libor Z for reference dates ##
-        self.myZ = vasicekMC.getSmallLibor(datelist= self.portfolioScheduleOfCF)
+        #self.myZ = vasicekMC.getSmallLibor(datelist= self.portfolioScheduleOfCF)
 
     #//////////////// Get Corporates simulated Q(t,t_j)
     def getQ_Corporate(self):
         ## Use CorporateDaily to get Q for referencedates ##
-        print("GET Q")
-        print(self.portfolioScheduleOfCF)
+        #print("GET Q")
+        #print(self.portfolioScheduleOfCF)
         myQ = CorporateRates()
         myQ.getCorporatesFred(trim_start=self.start_date, trim_end=self.end_date)
-        myQ.getCorporateData(rating=self.rating, datelist=self.portfolioScheduleOfCF)
         ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
         self.myQ = myQ.getCorporateQData(rating=self.rating, datelist=self.portfolioScheduleOfCF, R=0.4)
-        print(self.myQ.head(10))
-        print("Q finished ")
+        #print(self.myQ.head(10))
+        #print("Q finished ")
 
     #//////////////// Get Premium leg Z(t_i)( Q(t_(i-1)) + Q(t_i) )
     def getPremiumLegZ(self):
-        print("Get premium leg ")
+        #print("Get premium leg ")
         ## Check if Z and Q exists
         if self.myZ is None:
             self.getZ_Vasicek()
@@ -116,21 +118,23 @@ class CDS(object):
 
 
         ## Choose 1month Q
-        Q1M = self.myQ.iloc[:,0]
+        idx=pd.IndexSlice
+        Q1M = self.myQ[self.freq]
 
         ## Calculate Q(t_i) + Q(t_(i-1))
         Qplus = []
         Qplus.append(Q1M[0])
         for i in range(1,len(Q1M)):
-            Qplus.append(Q1M[(i-1)] + Q1M[i])
+            Qplus.append((Q1M[(i-1)] + Q1M[i])*(self.portfolioScheduleOfCF[i]-self.portfolioScheduleOfCF[i-1]).days/365)
 
         ## Calculate Z Bar ##
         zbarPremLeg = self.myZ/self.myZ.loc[self.referenceDate]
-        for i in range(self.myZ.shape[1]):
-            for j in range(self.myZ.shape[0]):
-                zbarPremLeg.iloc[j, i] = Qplus[i]*self.myZ.iloc[j, i]
+        for j in range(self.myZ.shape[0]):
+            zbarPremLeg.iloc[i] = Qplus[i]*self.myZ.iloc[i]
 
         ## Calculate the PV of the premium leg using the bond class
+        zbarPremLeg=zbarPremLeg.reshape(np.shape(zbarPremLeg)[0],1)
+        zbarPremLeg=pd.DataFrame(zbarPremLeg,index=self.myZ.index)
         PVpremiumLeg = self.getExposure(referencedate=self.referenceDate, libor=zbarPremLeg)
 
         ## Get coupon bond ###
@@ -138,7 +142,7 @@ class CDS(object):
 
     #//////////////// Get Protection leg Z(t_i)( Q(t_(i-1)) - Q(t_i) )
     def getProtectionLeg(self):
-        print("Get protection leg ")
+        #print("Get protection leg ")
         if self.myZ is None:
             self.getZ_Vasicek()
 
@@ -146,23 +150,25 @@ class CDS(object):
             self.getQ_Corporate()
 
         ## Choose 1month Q
-        Q1M = self.myQ.iloc[:,0]
+        idx=pd.IndexSlice
+        Q1M = self.myQ[self.freq]
 
         ## Calculate Q(t_i) + Q(t_(i-1))
         Qminus = []
         Qminus.append(Q1M[0])
         for i in range(1, len(Q1M)):
-            Qminus.append(Q1M[(i - 1)] - Q1M[i])
+            Qminus.append((Q1M[(i - 1)] - Q1M[i])*(self.portfolioScheduleOfCF[i]-self.portfolioScheduleOfCF[i-1]).days/365)
 
 
         ## Calculate Z Bar ##
         zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
-        for i in range(self.myZ.shape[1]):
-            for j in range(self.myZ.shape[0]):
-                zbarProtectionLeg.iloc[j, i] = Qminus[i]*self.myZ.iloc[j, i]
+        for i in range(self.myZ.shape[0]):
+            zbarProtectionLeg.iloc[ i] = Qminus[i]*self.myZ.iloc[ i]
 
 
         ## Calculate the PV of the premium leg using the bond class
+        zbarProtectionLeg=zbarProtectionLeg.reshape(np.shape(zbarProtectionLeg)[0],1)
+        zbarProtectionLeg=pd.DataFrame(zbarProtectionLeg,index=self.myZ.index)
         PVprotectionLeg = (1-self.R)*self.getExposure(referencedate=self.referenceDate,libor = zbarProtectionLeg)
 
         ## Get coupon bond ###
@@ -185,7 +191,6 @@ class CDS(object):
     def getExposure(self, referencedate,libor):
         self.ntrajectories = np.shape(libor)[1]
         self.ones = np.ones(shape=[self.ntrajectories])
-
         deltaT = np.zeros(self.ntrajectories)
         if self.ntimes == 0:
             pdzeros = pd.DataFrame(data=np.zeros([1, self.ntrajectories]), index=[referencedate])
@@ -229,8 +234,19 @@ class CDS(object):
         else:
             return -mtm
 
-#### TEST FUNCTIONS ###
+    def getSpread(self):
+        return self.getProtectionLeg()/self.getPremiumLegZ()
 
+    def changeGuessForSpread(self,x):
+        vasicekMC = MC_Vasicek_Sim(datelist=[self.start_date,self.end_date], x=x, simNumber=20, t_step=t_step)
+        self.myQ = vasicekMC.getSmallLibor(datelist=self.portfolioScheduleOfCF)[0]
+        self.myQ=pd.DataFrame(self.myQ,index=self.myQ.index)
+        self.myQ.columns=[self.freq]
+        return self.getSpread()
+
+
+#### TEST FUNCTIONS ###
+'''
 # Parameters
 t_step = 1.0 / 365.0
 simNumber = 10
@@ -240,9 +256,9 @@ start = date(2005, 3, 10)
 referenceDate = date(2005, 3, 10)
 
 # Testing of functions 
-testCDS = CDS(start_date = start_date,end_date=end_date,freq="3M",coupon=1,referenceDate=referenceDate,rating="AAA",R=0)
+testCDS = CDS(start_date = start_date,end_date=end_date,freq="3M",coupon=1,referenceDate=referenceDate,rating="CCC",R=0)
 getPremLeg = testCDS.getPremiumLegZ()
 getProtectionLeg = testCDS.getProtectionLeg()
 
-
-
+print(testCDS.getSpread())
+'''

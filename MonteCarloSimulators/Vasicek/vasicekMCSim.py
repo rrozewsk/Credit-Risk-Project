@@ -130,8 +130,8 @@ class MC_Vasicek_Sim(object):
         integralR = r.cumsum(axis=0)*self.t_step
         #calculate Libor
         self.libor = np.exp(-integralR)
-        #self.liborAvg=np.average(self.libor,axis=1)
-        #self.libor=np.c_[self.liborAvg,self.libor]
+        self.liborAvg=np.average(self.libor,axis=1)
+        self.libor=np.c_[self.liborAvg,self.libor]
         self.libor = pd.DataFrame(self.libor,index=self.datelistlong)
         return self.libor
 

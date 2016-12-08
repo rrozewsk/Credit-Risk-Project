@@ -90,7 +90,13 @@ class CorporateRates(object):
         self.corporates = pd.Panel(self.corporates)
         return self.corporates
 
-
+    def convertCols(self,list):
+        out=[]
+        for i in range(0,len(list)):
+            out.append(list[i].split(' ',1)[0]+list[i].split(' ',1)[1][0])
+        return out
+        
+        
     def getCorporateData(self, rating, datelist=None):
     # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).
     # It returns a dict of curves read directly from the corporate rates created by getCorporatesFred.
@@ -98,9 +104,9 @@ class CorporateRates(object):
         if datelist is None:
             return
         outCurve = {}
-
+        datelist.sort()
         #need an iteratble object
-        cols=list(self.corporates[rating].columns)
+        cols=self.convertCols(list(self.corporates[rating].columns))
         myDelays=[]
         #just putting an iterable object together
         for i in range(1,len(datelist)):
@@ -166,9 +172,8 @@ class CorporateRates(object):
             return
         # Create Q curves using q-tilde equation
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
-        print(outCurve)
         out=pd.DataFrame(outCurve,index=datelist)
-        cols=list(self.corporates[rating].columns)
+        cols=self.convertCols(list(self.corporates[rating].columns))
 
         out.columns=cols
         return out
