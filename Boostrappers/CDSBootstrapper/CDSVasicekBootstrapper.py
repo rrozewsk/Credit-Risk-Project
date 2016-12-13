@@ -2,9 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
 from parameters import trim_start,trim_end,referenceDate,x0Vas
-
+from datetime import date
 from Products.Credit.CDS import CDS
-
 from parameters import freq
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 
@@ -13,13 +12,10 @@ from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 class BootstrapperCDSLadder(object):
     #  Class with Bootstrapping methods
     #  It can be used with CDS Ladder or KK Ratings CDS Ladder Converted Values
-    def __init__(self, start, freq, LiborFunc, QFunc, OISFunc,R,CDSList):
+    def __init__(self, start, freq, R,CDSList):
         self.start=start
         self.freq=freq
-        self.libor=LiborFunc
-        self.Q=QFunc
         self.R=R
-        self.OIS=OISFunc
         self.listCDS=CDSList
 
     # %% GetSpread
@@ -47,16 +43,22 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                #print(quotes)
-                spread[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i])[0:4]
+                print(quotes)
+                myQ=MC_Vasicek_Sim(x=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i])[0:4],datelist=[orderedCDS[i].referenceDate,orderedCDS[i].maturity],t_step=1/365,simNumber=1000).getLibor()[0]
+                myQ=pd.DataFrame(myQ.values,columns=[orderedCDS[i].freq],index=myQ.index)
+                orderedCDS[i].myQ=myQ
+                print(myQ)
+                spread[orderedCDS[i].freq]=orderedCDS[i].getSpread()
         return spread
 
     #  Fit CDS Ladder using Vasicek,CRI,etc Model.  Input parameters are x0
     #  QFunCIR  with the name of the Q Model Function
     def CalibrateCurve(self, x0, quotes,myCDS):
         # Bootstrap CDS Ladder Directly
-        results = minimize(self.getSpreadBootstrapped, x0, args=(myCDS, quotes),method='Nelder-Mead')
+        results = minimize(self.getSpreadBootstrapped, x0, args=(myCDS, quotes))
         return results.x
-lad=BootstrapperCDSLadder(start=trim_start,freq=['3M','6M'],LiborFunc=None,QFunc=None,OISFunc=None,R=.4,CDSList=[CDS(start_date = trim_start,end_date=trim_end,freq="3M",coupon=1,referenceDate=referenceDate,rating="CCC",R=0)])
-vas=MC_Vasicek_Sim(x=lad.getSpreadList(x0Vas)['3M'],datelist=lad.listCDS[0].portfolioScheduleOfCF,t_step=1/365,simNumber=200)
-print(vas.getLibor()[0])
+'''
+
+myLad=BootstrapperCDSLadder(start=trim_start,freq=['6M'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='6M',coupon=1,referenceDate=trim_start,rating='AAA')],R=.4).getSpreadList(x0Vas)
+print(myLad)
+'''

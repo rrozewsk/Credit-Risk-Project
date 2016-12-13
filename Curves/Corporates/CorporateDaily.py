@@ -1,7 +1,4 @@
-__author__ = 'marcopereira'
-
 from pandas.stats.tests.common import COLS
-__author__ = 'marcopereira'
 #edited by ryanrozewski
 import numpy as np
 import pandas as pd
@@ -39,14 +36,15 @@ class CorporateRates(object):
 
     def getCorporatesFred(self, trim_start, trim_end):
         self.corpSpreads = {}
+        self.corpSpreads={}
+
         fred = Fred(api_key=FRED_API_KEY)
         curr_trim_end=trim_start
         if(self.corporates.size!=0):
             self.trim_start = self.corporates['OIS'].index.min().date()
             curr_trim_end = self.corporates['OIS'].index.max().date()
-        if trim_end<=curr_trim_end:
-            self.trim_end = curr_trim_end
-            return self.corporates
+
+
         self.trim_start = trim_start
         self.trim_end = trim_end
         self.OIS = OIS(trim_start=trim_start, trim_end=trim_end)
@@ -98,9 +96,10 @@ class CorporateRates(object):
         
         
     def getCorporateData(self, rating, datelist=None):
-    # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).
+    # This method gets a curve for a given date or date list for a given rating (normally this will be just a date).  
     # It returns a dict of curves read directly from the corporate rates created by getCorporatesFred.
     # Derive delays from self.corporates[rating].columns
+        #print("GEt corporate data ")
         if datelist is None:
             return
         outCurve = {}
@@ -109,35 +108,35 @@ class CorporateRates(object):
         cols=self.convertCols(list(self.corporates[rating].columns))
         myDelays=[]
         #just putting an iterable object together
-        for i in range(1,len(datelist)):
-            myDelays.append(datelist[i]-datelist[i-1])
+        for i in range(0,len(cols)):
+            myDelays.append(self.myScheduler.extractDelay(freq=cols[i]))
         myCurve=self.corporates[rating]
+        cols=['0D']+cols
         #print("My curve")
         #print(myCurve)
         #print(myDelays)
         #grabbing only the info with the rating I want and making a datelist to calulate time differences
-
         for day in datelist:
             #print(day)
             dates=[(myDelays[x]+day) for x in range(0,len(myDelays))]
             #print(dates)
-
+        dates=[datelist[0]]+dates
         #my array of interest rates
-        r=np.zeros((len(datelist),len(cols)))
+        r=np.zeros((len(datelist),len(dates)))
         #print(r)
+        nrows=len(dates)
         #multiplying the rate by the delta t in days and saving it to a spot in the array
-        t0=datelist[0]
         for j in range(0,len(datelist)):
             #print(datelist[j])
             day_tenors=myCurve.loc[datelist[j]]
-            for i in range(0,len(cols)):
-                 r[j,i]=r[j-1,i]+day_tenors[i]*(datelist[j]-t0).days/365
+            for i in range(1,len(day_tenors)+1):
+                r[j,i]=r[j,i-1]+day_tenors[i-1]*(dates[i]-datelist[j]).days/365
         # Create curves
         # ..............
         # ..............
         # add curve to outcurve dict
         #integrating and taking e^-
-        intR=r.cumsum(axis=0)*(1/365)
+        intR=r.cumsum(axis=0)
         outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
         out.columns=cols
@@ -155,7 +154,7 @@ class CorporateRates(object):
         r=np.zeros(len(datelist))
         #multiplying the rate by the delta t in days and saving it to a spot in the array
         for j in range(1,len(datelist)):
-            r[j]=r[j-1]+myCurve['VALUE'].loc[j]*(datelist[j-1]-datelist[j-1]).days/365
+            r[j]=r[j-1]+myCurve['VALUE'].loc[j-1]*(datelist[j]-datelist[j-1]).days/365
         # Create curves
         # ..............
         # ..............
@@ -166,14 +165,26 @@ class CorporateRates(object):
         out=pd.DataFrame(outCurve,index=datelist)
         return out
 
-    def getCorporateQData(self, rating, datelist=None, R=0.4):
+    def getCorporateQData(self, rating, datelist, R=0.4):
+        #print("Get gorporate Q data")
         self.R = R
         if datelist is None:
             return
+
+        trim_start = datelist[0]
+        trim_end = datelist[-1]
         # Create Q curves using q-tilde equation
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
         out=pd.DataFrame(outCurve,index=datelist)
+        out[out<0]=0
         cols=self.convertCols(list(self.corporates[rating].columns))
+        cols=['0D']+cols
+
+        ## Get OIS ###
+        getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
+        #print(getOIS.getOIS(datelist = datelist))
+
+        #outCurve = ((1 - (1 / (1 - R)) * (1 - (self.getCorporatesFred(trim_start) / self.getCorporateData(rating='OIS', datelist=datelist)))).values).tolist()
 
         out.columns=cols
         return out
@@ -218,18 +229,21 @@ class OIS(object):
         self.OIS.index = self.datesAll.DATE
 
     def getOIS(self, datelist=[]):
+        #print(self.OIS)
         if (len(datelist) != 0):
             return self.OIS.iloc[datelist]
         else:
             return self.OIS
 
 
+'''
+
 
 ##### Test Functions #######
-#test = Scheduler()
-#print(pd.Series([10,20,30]))
-#getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,11,7))
-#test = CorporateRates()
-#test.getCorporatesFred(trim_start = date(2010,6,6),trim_end=date(2018,9,6))
-##get_q = test.getCorporateQData(rating='CCC',datelist=getDateList,R=0.5)
-#print(get_q)
+test = Scheduler()
+getDateList = test.getDatelist(start = date(2013,2,2),end = date(2017,12,28),freq='1M',ref_date=date(2013,2,2))
+test = CorporateRates()
+test.getCorporatesFred(trim_start = date(2005,5,12),trim_end=date(2005,12,28))
+print(test.getCorporateQData(rating="",datelist=[date(2005,5,12)],R=.4))
+
+'''

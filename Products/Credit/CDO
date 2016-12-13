@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.stats as sc
 
-from scipy.stats import norm
 
 
 class CDO(object):
@@ -16,11 +15,10 @@ class CDO(object):
         self.inverse=[]
         if(self.copula == 'gaussian'):
             for i in range(0,len(self.PD)):
-                self.inverse.append(norm.ppf(self.PD[i]))
+                self.inverse.append(sc.norm.ppf(self.PD[i]))
         self.totalNotational=np.array(self.notational).sum(axis=0)
-        
 
-    
+
     def getTranches(self,numberSims,attachPoints):
         tranches={}
         attachPoints.sort()
@@ -45,14 +43,14 @@ class CDO(object):
             for k in range(0,len(attachPoints)-1):
                 tranches[attachPoints[k]]=percent[k]
         return tranches
-    
+
     def calcGaussModel(self):
         out=[]
         econRand=np.random.standard_normal()
         for i in range(0,len(self.corr)):
             out.append(self.corr[i]*econRand+np.sqrt((1-self.corr[i]**2))*np.random.standard_normal())
         return out
-    
+
     def countPotentialDefaults(self,vec):
         out=[]
         if(not len(self.inverse) == 0):
@@ -64,7 +62,8 @@ class CDO(object):
                     else:
                         out.append(0)
         return out
-    
+
+
     def calculatePloss(self,defaults):
         loss=[]
         out=0
@@ -74,7 +73,4 @@ class CDO(object):
             out=np.array(loss).sum(axis=0)
             out=out/self.totalNotational
         return out
-    def getChoelsky(self,mat):
-        out=np.array(np.shape(mat))
-        pass
-        
+
