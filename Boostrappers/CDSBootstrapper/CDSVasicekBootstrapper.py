@@ -43,19 +43,31 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                print(quotes)
                 myQ=MC_Vasicek_Sim(x=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i])[0:4],datelist=[orderedCDS[i].referenceDate,orderedCDS[i].maturity],t_step=1/365,simNumber=1000).getLibor()[0]
                 myQ=pd.DataFrame(myQ.values,columns=[orderedCDS[i].freq],index=myQ.index)
                 orderedCDS[i].myQ=myQ
-                print(myQ)
                 spread[orderedCDS[i].freq]=orderedCDS[i].getSpread()
         return spread
+
+    def getXList(self, xQ):
+        out = {}
+        orderedCDS=[]
+        for i in range(0,len(self.freq)):
+            for j in range(0,len(self.listCDS)):
+                if(self.freq[i] == self.listCDS[j].freq):
+                    orderedCDS.append(self.listCDS[j])
+        for i in range(0,len(orderedCDS)):
+                quotes=orderedCDS[i].getSpread()
+                out[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i]).tolist()
+        return out
 
     #  Fit CDS Ladder using Vasicek,CRI,etc Model.  Input parameters are x0
     #  QFunCIR  with the name of the Q Model Function
     def CalibrateCurve(self, x0, quotes,myCDS):
         # Bootstrap CDS Ladder Directly
-        results = minimize(self.getSpreadBootstrapped, x0, args=(myCDS, quotes))
+        results = minimize(self.getSpreadBootstrapped, x0, args=(myCDS, quotes),method='Powell')
+        print(results.success)
+        print(myCDS.freq)
         return results.x
 '''
 

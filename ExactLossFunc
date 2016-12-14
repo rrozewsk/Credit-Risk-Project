@@ -1,0 +1,142 @@
+
+from Boostrappers.CDSBootstrapper import CDSVasicekBootstrapper
+from parameters import x0Vas,trim_start,trim_end
+from Products.Credit.CDS import CDS
+from datetime import date
+from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
+from Scheduler import Scheduler
+import math
+import matplotlib.pyplot as plt
+import random
+import numpy as np
+import fractions
+from random import shuffle
+'''
+Takes a while but gives us usable x values for Q curves
+
+
+
+{'3M': [1.0015824271136229, 0.07118430651357378, -0.16068883479216692, 0.0073983085859183105, 3.1083459253964976, -4.971784090683851, -0.4774848528659512, -0.10058722679096088, -0.32595880089361595, 1.2498165670968577, 3.4947594489126534, 0.7693240320536217, 1.3561952580367567, 6.371501575362355, 1.5717830330107334, 3.0431872392927932], '6M': [0.6253740242837578, 0.07187788235360676, 0.002756754524306165, 0.0007534565001362353, -1.9788331302293565, 1.3633887485139464, 5.119926963331688, 3.1051517704782445, 0.7634682512381973, -0.2440315461962444, -1.625294304111004, 1.1807892914373608, 1.5803472042649411, 2.2546258881657137, -0.6220529111275982, -3.918280795179225], '1Y': [0.02268430209412819, 0.12335315163831377, 0.0019492996048123179, 0.001628657655447479, 2.012129584631548, -0.14425637029306565, 3.0201995002610156, 2.147972541679386, -0.5128642176120338, 2.2747902950169627, -0.20546619851504466, 1.5945520333717365, 1.1372771020777144, 3.5153776822797216, 0.9602982736891876, -2.470770239032655], '3Y': [26.4868013103451, 0.10123386920113561, 0.007172027822595987, -0.0011729920248976869, 4.671838150691669, 2.0943942967130518, 1.8784163354679428, 2.829205309274365, 0.6419078923238758, 1.9913439793507237, 0.9155288227819725, 0.2038138762167537, 5.345533516522538, 3.7619427230742546, 0.1152302416309914, 2.657152673978014]}
+{'3M': [2.2676030271568077, 0.06869592728485677, -0.002415215219504258, 0.0010910153202821262, 2.076053981582788, -2.4830012835412374, 1.4792817746843325, 2.227857983492404, -0.3936126755070518, -0.16392645500488395, 1.285584627035015, 3.041436386446073, 3.2291187114730233, 3.3449348319234886, -2.054285553987237, 0.906769966943711]}
+
+
+
+
+
+
+
+AAACDS=[CDS(start_date=trim_start,end_date=date(2010,10,1),freq='3M',coupon=1,referenceDate=trim_start,rating='AAA'),
+CDS(start_date=trim_start,end_date=date(2010,10,1),freq='6M',coupon=1,referenceDate=trim_start,rating='AAA'),
+CDS(start_date=trim_start,end_date=date(2010,10,1),freq='1Y',coupon=1,referenceDate=trim_start,rating='AAA'),
+CDS(start_date=trim_start,end_date=date(2010,10,1),freq='3Y',coupon=1,referenceDate=trim_start,rating='AAA')]
+
+BBBCDS=[CDS(start_date=trim_start,end_date=date(2010,10,1),freq='3M',coupon=1,referenceDate=trim_start,rating='BBB')]
+AAA=CDSVasicekBootstrapper.BootstrapperCDSLadder(start=trim_start,freq=['3M','6M','1Y','3Y'],CDSList=AAACDS,R=.4).getXList(x0Vas)
+BBB=CDSVasicekBootstrapper.BootstrapperCDSLadder(start=trim_start,freq=['3M'],CDSList=BBBCDS,R=.4).getXList(x0Vas)
+
+print(AAA)
+print(BBB)
+
+'''
+
+
+AAAx={'3M': [1.0015824271136229, 0.07118430651357378, -0.16068883479216692, 0.0073983085859183105, 3.1083459253964976, -4.971784090683851, -0.4774848528659512, -0.10058722679096088, -0.32595880089361595, 1.2498165670968577, 3.4947594489126534, 0.7693240320536217, 1.3561952580367567, 6.371501575362355, 1.5717830330107334, 3.0431872392927932], '6M': [0.6253740242837578, 0.07187788235360676, 0.002756754524306165, 0.0007534565001362353, -1.9788331302293565, 1.3633887485139464, 5.119926963331688, 3.1051517704782445, 0.7634682512381973, -0.2440315461962444, -1.625294304111004, 1.1807892914373608, 1.5803472042649411, 2.2546258881657137, -0.6220529111275982, -3.918280795179225], '1Y': [0.02268430209412819, 0.12335315163831377, 0.0019492996048123179, 0.001628657655447479, 2.012129584631548, -0.14425637029306565, 3.0201995002610156, 2.147972541679386, -0.5128642176120338, 2.2747902950169627, -0.20546619851504466, 1.5945520333717365, 1.1372771020777144, 3.5153776822797216, 0.9602982736891876, -2.470770239032655], '3Y': [26.4868013103451, 0.10123386920113561, 0.007172027822595987, -0.0011729920248976869, 4.671838150691669, 2.0943942967130518, 1.8784163354679428, 2.829205309274365, 0.6419078923238758, 1.9913439793507237, 0.9155288227819725, 0.2038138762167537, 5.345533516522538, 3.7619427230742546, 0.1152302416309914, 2.657152673978014]}
+BBBx={'3M': [2.2676030271568077, 0.06869592728485677, -0.002415215219504258, 0.0010910153202821262, 2.076053981582788, -2.4830012835412374, 1.4792817746843325, 2.227857983492404, -0.3936126755070518, -0.16392645500488395, 1.285584627035015, 3.041436386446073, 3.2291187114730233, 3.3449348319234886, -2.054285553987237, 0.906769966943711]}
+
+
+def genUnderlyings(notional,R,start,freq,quality,number):
+    out=[]
+    for i in range(0,number):
+        random.seed(i)
+        out.append((notional,start,freq,quality,R))
+    
+    return out
+    
+    
+#test=genUnderlyings(1,random.uniform(.25,.5),trim_start,'3M','AAA',20)+genUnderlyings(1,random.uniform(.25,.5),trim_start,'6M','AAA',10)+genUnderlyings(1,random.uniform(.25,.5),trim_start,'1Y','AAA',10)+genUnderlyings(1,random.uniform(.25,.5),trim_start,'3Y','AAA',5)+genUnderlyings(1,random.uniform(.25,.5),trim_start,'3M','BBB',20)
+
+class ExactFunc():
+    
+    def __init__(self,start,underlyings,K1,K2):
+        
+        myScheduler=Scheduler.Scheduler()
+        myDelays=[]
+        freqs=['3M','6M','1Y','3Y']
+        for i in range(0,len(freqs)):
+            myDelays.append(myScheduler.extractDelay(freqs[i]))
+        AAA={}
+        for i in range(0,len(freqs)):
+            vas=MC_Vasicek_Sim(x=AAAx[freqs[i]],datelist=[trim_start,myDelays[i]+trim_start],t_step=1/365.,simNumber=500)
+            AAA[freqs[i]]=vas.getLibor()[0].loc[myDelays[i]+trim_start]
+        
+        BBB={'3M': MC_Vasicek_Sim(x=BBBx[freqs[0]],datelist=[trim_start,myDelays[0]+trim_start],t_step=1/365.,simNumber=500).getLibor()[0].loc[myDelays[0]+trim_start]}
+        self.probs={'AAA': AAA, 'BBB':BBB}
+        self.underlyings=underlyings
+        self.lowerStrike=K1
+        self.upperStrike=K2
+        
+    def f(self,k,j):
+        if(j==0 and k==0):
+            return 1
+        if(j==0 and k>0):
+            return 0
+        if(k==0 and j>0):
+            return self.f(k,j-1)*self.probs[self.underlyings[j][3]][self.underlyings[j][2]]
+        else:
+            return self.f(k,j-1)*(self.probs[self.underlyings[j][3]][self.underlyings[j][2]])+self.f(k-1,j-1)*(1-self.probs[self.underlyings[j][3]][self.underlyings[j][2]])
+
+    def expectedLoss(self,K):
+        maxLoss=self.getTrancheNumb(K)
+        expectation=0
+        for i in range(0,maxLoss+1):
+            expectation=expectation+i*.6*self.f(i,len(self.underlyings)-1)
+        return expectation
+    
+
+        
+    def totalGCD(self):
+        g=(1-self.underlyings[0][4])*self.underlyings[0][0]
+        for i in range(1,len(self.underlyings)):
+            g=fractions.gcd(g,(1-self.underlyings[i][4])*self.underlyings[i][0])
+        return g
+
+    def getLossVec(self):
+        g=self.totalGCD()
+        n=[]
+        for i in range(0,len(self.underlyings)):
+            n.append(((1-self.underlyings[i][4])*self.underlyings[i][0])/g)
+        return n
+    
+    def fprime(self,k,j,vec):
+        
+        if(j==0 and k==0):
+            return 1
+        if(j==0 and k>0 and k<=2533):
+            return 0
+        if(k>=0 and k<vec[j] and j<len(vec)):
+            return self.fprime(k,j-1,vec)*self.probs[self.underlyings[j][3]][self.underlyings[j][2]]
+        if(vec[j]<= k and k<=253):
+            return self.fprime(k,j-1,vec)*(self.probs[self.underlyings[j][3]][self.underlyings[j][2]])+self.fprime(k-vec[j],j-1,vec)*(1-self.probs[self.underlyings[j][3]][self.underlyings[j][2]])
+        
+        
+    def getTrancheNumb(self,K):
+        sum=np.array(self.getLossVec()).sum()
+        losses=self.getLossVec()
+        totalLoss=0
+        for i in range(0,len(losses)):
+            totalLoss=totalLoss+losses[i]/sum
+            if(totalLoss >= K):
+                return i
+
+    def threshold(self,K):
+        sum=np.array(self.getLossVec()).sum()
+        return math.floor(sum*K)
+
+
+'''
+test=genUnderlyings(100,.4,trim_start,'3M','AAA',20)+genUnderlyings(100,.4,trim_start,'6M','AAA',10)+genUnderlyings(100,.4,trim_start,'1Y','AAA',10)+genUnderlyings(100,round(random.uniform(.25,.5),2),trim_start,'3Y','AAA',1)+genUnderlyings(100,.3,trim_start,'3M','BBB',1)
+shuffle(test)
+ex=ExactFunc(underlyings=test,start=trim_start,K1=0,K2=.1)
+print(np.array(ex.getLossVec()).sum())
+print(ex.fprime(250,len(ex.getLossVec())-1,ex.getLossVec()))
+'''

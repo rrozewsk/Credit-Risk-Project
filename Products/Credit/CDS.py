@@ -102,10 +102,7 @@ class CDS(object):
         myQ.getCorporatesFred(trim_start=self.referenceDate, trim_end=self.end_date)
         ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
         daterange=pd.date_range(start=self.referenceDate,end=self.maturity).date
-        temp=[]
-        for i in range(0,len(daterange)):
-            temp.append(myQ.getCorporateQData(rating=self.rating, datelist=[daterange[i]], R=0.4))
-        self.myQ=pd.concat(temp)
+        self.myQ=myQ.getCorporateQData(rating=self.rating, datelist=daterange, R=0.4)
 
         #print(self.myQ.head(10))
         #print("Q finished ")
@@ -125,19 +122,14 @@ class CDS(object):
         Q1M = self.myQ[self.freq]
         timed=self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M=Q1M.loc[timed]
-        ## Calculate Q(t_i) + Q(t_(i-1))
-        print(Q1M)
-        Qplus = []
-        for i in range(1,len(Q1M)):
-            Qplus.append((Q1M[(i-1)] + Q1M[i])*float((timed[i]-timed[i-1]).days/365))
-        ## Calculate Z Bar ##
         zbarPremLeg = self.myZ/self.myZ.loc[self.referenceDate]
         zbarPremLeg=zbarPremLeg.loc[timed]
+        ## Calculate Q(t_i) + Q(t_(i-1))
+        Qplus = []
         out=0
-        print(len(zbarPremLeg))
-        print(len(Qplus))
-        for j in range(0,len(Qplus)):
-            out =out+Qplus[i]*zbarPremLeg[i]
+        for i in range(1,len(Q1M)):
+            out=out+(Q1M[(i-1)] + Q1M[i])*float((timed[i]-timed[i-1]).days/365)*zbarPremLeg[i]
+
 
         ## Calculate the PV of the premium leg using the bond class
         zbarPremLeg=zbarPremLeg.reshape(np.shape(zbarPremLeg)[0],1)
@@ -159,12 +151,12 @@ class CDS(object):
         Q1M = self.myQ[self.freq]
 
         ## Calculate Q(t_i) + Q(t_(i-1))
-        Qminus = np.gradient(np.array(Q1M),1/365)
+        Qminus = np.gradient(np.array(Q1M))
 
         ## Calculate Z Bar ##
         zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
         for i in range(zbarProtectionLeg.shape[0]):
-            zbarProtectionLeg.iloc[ i] = -Qminus[i]*zbarProtectionLeg.iloc[i]
+            zbarProtectionLeg.iloc[ i] = -Qminus[i]*zbarProtectionLeg.iloc[i]*1/365
 
 
         ## Calculate the PV of the premium leg using the bond class
@@ -248,17 +240,17 @@ class CDS(object):
 
 
 #### TEST FUNCTIONS ###
-
+'''
 # Parameters
 t_step = 1.0 / 365.0
 simNumber = 10
-start_date = date(2005,2,28)
-end_date = date(2010,9,30)  # Last Date of the Portfolio
-start = date(2005, 2, 28)
-referenceDate = date(2005, 3, 10)
+start_date = date(2006,2,28)
+end_date = date(2008,9,30)  # Last Date of the Portfolio
+start = date(2006, 2, 28)
+referenceDate = date(2006, 3, 10)
 
 # Testing of functions 
-testCDS = CDS(start_date = start_date,end_date=end_date,freq='6M',coupon=1,referenceDate=referenceDate,rating="AAA",R=.4)
+testCDS = CDS(start_date = start_date,end_date=end_date,freq='6M',coupon=1,referenceDate=referenceDate,rating="CCC",R=.4)
 
 
 getPremLeg = testCDS.getPremiumLegZ()
@@ -266,5 +258,5 @@ getProtectionLeg = testCDS.getProtectionLeg()
 print(getPremLeg)
 print(getProtectionLeg)
 print(testCDS.getSpread())
-
+'''
 

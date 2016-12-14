@@ -9,6 +9,7 @@ from Scheduler.Scheduler import Scheduler
 from parameters import WORKING_DIR
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 from fredapi import Fred
+from dateutil import relativedelta
 
 QUANDL_API_KEY = 'WgTCCAFvmDkTLv8Wqju4'
 FRED_API_KEY = "bcd1d85077e14239f5678a9fd38f4a59"
@@ -107,6 +108,7 @@ class CorporateRates(object):
         #need an iteratble object
         cols=self.convertCols(list(self.corporates[rating].columns))
         myDelays=[]
+        myDelays.append(relativedelta.relativedelta(days=0))
         #just putting an iterable object together
         for i in range(0,len(cols)):
             myDelays.append(self.myScheduler.extractDelay(freq=cols[i]))
@@ -116,13 +118,13 @@ class CorporateRates(object):
         #print(myCurve)
         #print(myDelays)
         #grabbing only the info with the rating I want and making a datelist to calulate time differences
-        for day in datelist:
+        dates=[]
+        for day in range(0,len(datelist)):
             #print(day)
-            dates=[(myDelays[x]+day) for x in range(0,len(myDelays))]
+            dates.append([(myDelays[x]+datelist[day]) for x in range(0,len(myDelays))])
             #print(dates)
-        dates=[datelist[0]]+dates
         #my array of interest rates
-        r=np.zeros((len(datelist),len(dates)))
+        r=np.zeros((len(datelist),len(dates[0])))
         #print(r)
         nrows=len(dates)
         #multiplying the rate by the delta t in days and saving it to a spot in the array
@@ -130,13 +132,13 @@ class CorporateRates(object):
             #print(datelist[j])
             day_tenors=myCurve.loc[datelist[j]]
             for i in range(1,len(day_tenors)+1):
-                r[j,i]=r[j,i-1]+day_tenors[i-1]*(dates[i]-datelist[j]).days/365
+                r[j,i]=r[j,i-1]+day_tenors[i-1]*((dates[j][i]-datelist[j]).days/365)
         # Create curves
         # ..............
         # ..............
         # add curve to outcurve dict
         #integrating and taking e^-
-        intR=r.cumsum(axis=0)
+        intR=r.cumsum(axis=1)
         outCurve=np.exp(-intR)
         out=pd.DataFrame(outCurve)
         out.columns=cols
