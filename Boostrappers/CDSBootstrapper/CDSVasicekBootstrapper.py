@@ -69,8 +69,7 @@ class BootstrapperCDSLadder(object):
         print(results.success)
         print(myCDS.freq)
         return results.x
-'''
+
 
 myLad=BootstrapperCDSLadder(start=trim_start,freq=['6M'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='6M',coupon=1,referenceDate=trim_start,rating='AAA')],R=.4).getSpreadList(x0Vas)
 print(myLad)
-'''
