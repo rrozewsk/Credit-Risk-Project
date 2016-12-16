@@ -50,7 +50,6 @@ class PortfolioLossCalculation(object):
         Q1M = self.myQ[self.freq]
         #print(Q1M)
 
-
         ## Only for the dates specified
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         self.Q1M = Q1M.loc[timed]
@@ -91,6 +90,7 @@ class PortfolioLossCalculation(object):
         ## Loop through dates in  Q ###
         # Q is a dataframe with dates and values
         Q_now = self.getQ()
+        print(Q_now)
         QTranche = []
 
         count = 1
@@ -102,11 +102,14 @@ class PortfolioLossCalculation(object):
             QTranche.append(1 - (emin2 - emin1) / (K2 - K1))
             count += 1
 
-        QTranche = pd.Series(QTranche,index = Q_now.index,name="QTranche")
+        QTranche = pd.Series(QTranche,index = Q_now.index,name=self.freq)
+        #QTranche=pd.DataFrame(QTranche.values,index=Q_now.index,columns=list(self.freq))
         QTranche = QTranche/QTranche[self.referenceDate]
         ## Data ready to be used in pricing ###
         Q_New = pd.concat([Q_now, QTranche], axis=1)
-
+        Q_New.columns = ["3MQ","3M"]
+        #Q_now[self.freq] = QTranche
+        print(Q_New)
         ## Calculate Spread ###
         self.CDSClass.setQ(Q_New)
         ProtectionLeg = self.CDSClass.getProtectionLeg()
@@ -115,7 +118,7 @@ class PortfolioLossCalculation(object):
         spreads = ProtectionLeg/PremiumLeg
 
         print("SPREADS BP")
-        print("Spread: ",spreads*100,"Bp")
+        print("Spread: ",spreads*10000,"Bp")
 
         return Q_New
 
@@ -137,6 +140,7 @@ class PortfolioLossCalculation(object):
         """
         ## Does not work, need to get Qs for several credits #####
         Q_now = self.getQ()
+
         Cs = [norm.ppf(1 - q(t)) for q in Qs]
         N = len(Fs)
 
@@ -153,7 +157,7 @@ class PortfolioLossCalculation(object):
         integral = quad(lambda z: f(z) * norm.pdf(z), -10, 10)[0]
         return 1 - integral / (K2 - K1)
 
-    def Q_adjbinom(t, K1, K2, Fs, Rs, betas, Qs):
+    def Q_adjbinom(self, K1, K2, Fs, Rs, betas, Qs):
         if Qs[0](t) == 1:
             return 1.0  # initial value -- avoids weird nan return
         N = len(Fs)
@@ -208,15 +212,15 @@ referenceDate = date(2012, 12, 20)
 #tvalues = [today + timedelta(days = 30) * n for n in range(37)] #3 years
 #print(tvalues)
 
-K1 = 0.10
-K2 = 0.20
+K1 = 0.01
+K2 = 0.03
 Fs = [0.3, 0.8]
 Rs = [0.40, 0.60]
 betas = [0.30, 1]
-freq = "1M"
+freq = "3M"
 test = PortfolioLossCalculation(K1 = K1, K2 = K2, Fs = Fs, Rs =Rs, betas = betas,
                                 start_date = start_date,end_date = end_date,freq=freq,
-                                coupon = 0.001,referenceDate = referenceDate,rating="AA",
+                                coupon = 0.001,referenceDate = referenceDate,rating="AAA",
                                 R=0)
 test.getQ()
 test.Q_lhp(K1=K1, K2 = K2, R =0.4,beta = 0.30)

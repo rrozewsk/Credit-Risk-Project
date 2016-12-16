@@ -69,10 +69,8 @@ class CDS(object):
         ## Zin needs to be a pandas dataframe
         self.myZ = Zin
 
-
     def setQ(self,Qin):
         self.myQ = Qin
-
 
     #////////////////////////////////////////////////////////////////////////////////////////////#
     #////////////////////////////////////////////////////////////////////////////////////////////#
@@ -125,7 +123,7 @@ class CDS(object):
 
         ## Choose 1month Q
         #Q1M = self.myQ[self.QFreq]
-        Q1M = self.myQ["QTranche"]
+        Q1M = self.myQ[self.freq]
         timed=self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M=Q1M.loc[timed]
         zbarPremLeg = self.myZ/self.myZ.loc[self.referenceDate]
@@ -156,9 +154,6 @@ class CDS(object):
         if self.myQ is None:
             self.getQ_Corporate()
 
-        Q1M = self.myQ["QTranche"]
-
-
         ## Calculate Q(t_i) + Q(t_(i-1))
         #Qminus = np.gradient(np.array(Q1M))
         #print(Qminus)
@@ -166,7 +161,7 @@ class CDS(object):
         #QArray = np.insert(QArray, obj = 0, values = 1)
         #print(QArray)
 
-        Q1M = self.myQ["QTranche"]
+        Q1M = self.myQ[self.freq]
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M = Q1M.loc[timed]
         zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
@@ -268,8 +263,8 @@ class CDS(object):
     def changeGuessForSpread(self,x):
         vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate,self.maturity], x=x, simNumber=20, t_step=t_step)
         self.myQ = vasicekMC.getLibor()[0]
-        self.myQ=pd.DataFrame(self.myQ,index=self.myQ.index)
-        self.myQ.columns=[self.freq]
+        self.myQ = pd.DataFrame(self.myQ,index=self.myQ.index)
+        self.myQ.columns = [self.freq]
         return self.getSpread()
 
 
