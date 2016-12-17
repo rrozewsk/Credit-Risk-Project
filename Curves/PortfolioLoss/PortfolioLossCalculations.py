@@ -4,13 +4,14 @@ from numpy import exp
 from datetime import date, timedelta
 import pandas as pd
 import numpy as np
-
+from parameters import x0Vas
 from Curves.Corporates.CorporateDaily import CorporateRates
 from Products.Credit.CDS import CDS
 from Scheduler.Scheduler import Scheduler
 from scipy.integrate import quad
 from Curves.PortfolioLoss.ExactFunc import ExactFunc
-
+from Boostrappers.CDSBootstrapper.CDSVasicekBootstrapper import BootstrapperCDSLadder
+from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 
 class PortfolioLossCalculation(object):
     def __init__(self, K1, K2, Fs, Rs, betas,start_date,end_date,freq,coupon,referenceDate,rating,R=.4):
@@ -35,10 +36,13 @@ class PortfolioLossCalculation(object):
                       rating=rating, R=R)
         self.portfolioScheduleOfCF,self.datelist = self.CDSClass.getScheduleComplete()
 
-    def getQ(self):
+    def getQ(self,bootstrap):
         ## Use CorporateDaily to get Q for referencedates ##
         # print("GET Q")
         # print(self.portfolioScheduleOfCF)
+        if(bootstrap):
+            myLad=BootstrapperCDSLadder(start=self.start_date,freq=[self.freq],CDSList=[self.CDSClass],R=self.CDSClass.R).getXList(x0Vas)[self.freq]
+            Q1M=MC_Vasicek_Sim(x=myLad,t_step==1/365,datelist=[self.CDSClass.referenceDate,self.CDSClass.end_date]).getLibor()[0]
         myQ = CorporateRates()
         myQ.getCorporatesFred(trim_start=self.referenceDate, trim_end=self.end_date)
         ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
