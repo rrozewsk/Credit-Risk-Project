@@ -74,7 +74,7 @@ class MC_Vasicek_Sim(object):
         simulated libor values. It is also the zeroth column of 
         `libor`.
     """
-    def __init__(self, datelist,x, simNumber,t_step):
+    def __init__(self, datelist,x,simNumber,t_step):
 
         """Perameters
         ----------

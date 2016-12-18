@@ -6,57 +6,59 @@ import datetime as dt
 import pandas as pd
 import numpy as np
 
+from parameters import x0Vas
 from Curves.Corporates.CorporateDaily import CorporateRates
 from Products.Credit.CDS import CDS
 from Scheduler.Scheduler import Scheduler
 from scipy.integrate import quad
 from Curves.PortfolioLoss.ExactFunc import ExactFunc
 
+from Boostrappers.CDSBootstrapper.CDSVasicekBootstrapper import BootstrapperCDSLadder
+from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 
 class PortfolioLossCalculation(object):
-    def __init__(self, K1, K2, Fs, Rs, betas,start_date,end_date,freq,coupon,referenceDate,rating,R=.4):
+    def __init__(self, K1, K2, Fs, Rs, betas,start_dates,end_dates,freqs,coupons,referenceDates,ratings,bootstrap):
+        self.bootstrap = bootstrap
         self.K1 = K1
         self.K2 = K2
         self.Fs= Fs
         self.Rs = Rs
         self.betas = betas
-        #self.Qs = Qs
-        self.referenceDate = referenceDate
-        self.freq = freq
-        self.coupon = coupon
-        self.R = R
-        self.start_date = start_date
-        self.end_date = end_date
+        self.referenceDates = referenceDates
+        self.freqs = freqs
+        self.coupons = coupons
+        self.start_dates = start_dates
+        self.end_dates = end_dates
         self.myScheduler = Scheduler()
-        delay = self.myScheduler.extractDelay(self.freq)
+        #delay = self.myScheduler.extractDelay(self.freq)
         #self.maturity = end_date
-        self.rating = rating
+        self.ratings = ratings
 
-        self.CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=1, referenceDate=referenceDate,
-                      rating=rating, R=R)
-        self.portfolioScheduleOfCF,self.datelist = self.CDSClass.getScheduleComplete()
+        #self.CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=1, referenceDate=referenceDate,
+        #              rating=rating, R=R)
+        #self.portfolioScheduleOfCF,self.datelist = self.CDSClass.getScheduleComplete()
 
-    def getQ(self,referenceDate,end_date,rating,R,freq):
+    def getQ(self,start_date,referenceDate,end_date,rating,R,freq):
         ## Use CorporateDaily to get Q for referencedates ##
         # print("GET Q")
         # print(self.portfolioScheduleOfCF)
-        myQ = CorporateRates()
-        myQ.getCorporatesFred(trim_start=referenceDate, trim_end=end_date)
-        ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
-        daterange = pd.date_range(start=referenceDate, end=end_date).date
-        self.myQ = myQ.getCorporateQData(rating=rating, datelist=daterange, R=R)
 
-        ## Only keep the 1Month Q #####
-        #print(self.freq)
-        self.Q1M = self.myQ[freq]
-        #print(Q1M)
-
-        ## Only for the dates specified
-        #timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
-        #self.Q1M = Q1M.loc[timed]
-        self.Q1M = np.cumprod(self.Q1M)
-        self.Q1M = self.Q1M/self.Q1M[self.referenceDate]
-        #print(self.Q1M)
+        if self.bootstrap:
+            print("Q bootstrap")
+            CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=1, referenceDate=referenceDate,
+                           rating=rating, R=R)
+            myLad = BootstrapperCDSLadder(start=start_date, freq=[freq], CDSList=[CDSClass],
+                                          R=CDSClass.R).getXList(x0Vas)[freq]
+            self.Q1M = MC_Vasicek_Sim(x=myLad, t_step = 1 / 365,
+                                 datelist=[CDSClass.referenceDate, CDSClass.end_date],simNumber=50).getLibor()[0]
+            print(self.Q1M)
+        else:
+            myQ = CorporateRates()
+            myQ.getCorporatesFred(trim_start=referenceDate, trim_end=end_date)
+            ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
+            daterange = pd.date_range(start=referenceDate, end=end_date).date
+            self.myQ = myQ.getCorporateQData(rating=rating, datelist=daterange, R=R)
+            self.Q1M = self.myQ[freq]
 
         return(self.Q1M)
 
@@ -104,7 +106,6 @@ class PortfolioLossCalculation(object):
             Qs (list): Survival curves for each credit. Each entry must be a callable function
                 that takes in a datetime.date argument and returns a number from 0 to 1.
         """
-        print('#', end="")
         Cs = [norm.ppf(1 - q(t)) for q in Qs]
         N = len(Fs)
 
@@ -135,7 +136,6 @@ class PortfolioLossCalculation(object):
             Returns:
                 float: The value of the tranche survival curve.
         """
-        print(t)
         if Qs[0](t) == 1:
             return 1.0  # initial value -- avoids weird nan return
         N = len(Fs)
@@ -200,35 +200,22 @@ class PortfolioLossCalculation(object):
 
 
     def CDOPortfolio(self):
-        ## Create a portfolio of CDSs ###
-        N = 2 #Number of CDSs
-        K1 = 0.03
-        K2  = 0.07
-        Fs = [0.5, 0.5]
-        Rs = [0.40, 0.40]
-        betas = [0.40, 0.40]
-        # Should assume same start,reference and end_dates
-        start_dates = [date(2012,2,28),date(2012,2,28)]
-        referenceDates = [date(2013, 1, 20),date(2013, 1, 20)]
-        end_dates = [date(2013, 12, 31),date(2013, 12, 31)]
-        ratings = ["AAA","AAA"]
-        freqs = ["3M","3M"]
 
-        CDSClass = CDS(start_date=start_dates[0], end_date=end_dates[0], freq=freqs[0], coupon=1, referenceDate=referenceDates[0],
-                            rating=ratings[0], R=Rs[0])
+
+        CDSClass = CDS(start_date=self.start_dates[0], end_date=self.end_dates[0], freq=self.freqs[0], coupon=self.coupons[0],
+                       referenceDate=self.referenceDates[0],
+                            rating=self.ratings[0], R=0)
 
         ## price CDOs using LHP
-        self.referenceDate = referenceDates[0]
-        Q_now1 = self.getQ(referenceDates[0],end_dates[0],ratings[0],Rs[0],freqs[0])
-        #Q_now2 = self.getQ(referenceDates[1], end_dates[1], ratings[1], Rs[1], freqs[1])
-        print("Q_now")
-        print(Q_now1)
+        Q_now1 = self.getQ(self.start_dates[0],self.referenceDates[0],self.end_dates[0],self.ratings[0],
+                           self.Rs[0],self.freqs[0])
 
         ### Create Q dataframe
         tvalues = Q_now1.index.tolist()
         Cs = pd.Series(Q_now1,index=tvalues)
         for cds_num in range(1,len(Fs)):
-            Q_add = self.getQ(referenceDates[cds_num], end_dates[cds_num], ratings[cds_num], Rs[cds_num], freqs[cds_num])
+            Q_add = self.getQ(self.start_dates[cds_num],self.referenceDates[cds_num], self.end_dates[cds_num], self.ratings[cds_num],
+                              self.Rs[cds_num], self.freqs[cds_num])
             Q_add = pd.Series(Q_add,index = tvalues)
             Cs = pd.concat([Cs,Q_add],axis = 1)
 
@@ -240,11 +227,12 @@ class PortfolioLossCalculation(object):
         Qs = [expdecay(n) for n in range(0,Cs.shape[1])]
 
         ###### LHP Method #####################################################################
+        Rs_mean = np.mean(self.Rs)
+        betas_mean = np.mean(betas)
 
-        lhpcurve = [self.Q_lhp(t, K1, K2, R = Rs[0], beta = betas[0], Q = Qs[0]) for t in tvalues]
+        lhpcurve = [self.Q_lhp(t, self.K1, self.K2, R = Rs_mean, beta = betas_mean, Q = Qs[0]) for t in tvalues]
         lhpcurve = pd.Series(lhpcurve,index = tvalues)
-        #lhpcurve = np.cumprod(lhpcurve)
-        #lhpcurve = lhpcurve/lhpcurve[tvalues[0]]
+        lhpcurve = lhpcurve.to_frame(self.freqs[0])
 
         CDSClass.setQ(lhpcurve)
         ProtectionLeg = CDSClass.getProtectionLeg()
@@ -252,11 +240,13 @@ class PortfolioLossCalculation(object):
         spreads = ProtectionLeg / PremiumLeg
         print("The spread for LHP is: ", 10000 * spreads, ".")
         ########################################################################################
+
+        ###### Gaussian Method #####################################################################
         print('Gaussian progression: ', end="")
-        gaussiancurve = [self.Q_gauss(t, K1, K2, Fs = Fs, Rs =Rs, betas=betas, Qs=Qs) for t in tvalues]
+        gaussiancurve = [self.Q_gauss(t, self.K1, self.K2, Fs = self.Fs, Rs =self.Rs, betas=self.betas, Qs=Qs) for t in tvalues]
         gaussiancurve = pd.Series(gaussiancurve, index=tvalues)
-        #gaussiancurve = np.cumprod(gaussiancurve)
-        #gaussiancurve = gaussiancurve / gaussiancurve[tvalues[0]]
+        gaussiancurve = gaussiancurve.to_frame(self.freqs[0])
+        print(gaussiancurve.head(10))
 
         CDSClass.setQ(gaussiancurve)
         ProtectionLeg = CDSClass.getProtectionLeg()
@@ -264,10 +254,10 @@ class PortfolioLossCalculation(object):
         spreads = ProtectionLeg / PremiumLeg
         print("The Gaussian spread is: ", 10000 * spreads, ".")
 
-        adjustedbinomialcurve = [self.Q_adjbinom(t, K1, K2, Fs = Fs, Rs = Rs, betas=betas, Qs=Qs) for t in tvalues]
+        ###### Adjusted Binomial Method #####################################################################
+        adjustedbinomialcurve = [self.Q_adjbinom(t, self.K1, self.K2, Fs = self.Fs, Rs = self.Rs, betas=self.betas, Qs=Qs) for t in tvalues]
         adjustedbinomialcurve = pd.Series(adjustedbinomialcurve, index=tvalues)
-        #adjustedbinomialcurve = np.cumprod(adjustedbinomialcurve)
-        #adjustedbinomialcurve = adjustedbinomialcurve / adjustedbinomialcurve[tvalues[0]]
+        adjustedbinomialcurve = adjustedbinomialcurve.to_frame(self.freqs[0])
 
         CDSClass.setQ(adjustedbinomialcurve)
         ProtectionLeg = CDSClass.getProtectionLeg()
@@ -275,10 +265,10 @@ class PortfolioLossCalculation(object):
         spreads = ProtectionLeg / PremiumLeg
         print("The Adjusted Binomial spread is: ", 10000 * spreads, ".")
 
-        exactcurve = [self.Q_exact(t, K1, K2, Fs =Fs, Rs = Rs, betas =betas, Qs =Qs) for t in tvalues]
+        ###### Exact Method #####################################################################
+        exactcurve = [self.Q_exact(t, self.K1, self.K2, Fs =self.Fs, Rs = self.Rs, betas =self.betas, Qs =Qs) for t in tvalues]
         exactcurve = pd.Series(exactcurve, index=tvalues)
-        #exactcurve = np.cumprod(exactcurve)
-        #exactcurve = exactcurve / exactcurve[tvalues[0]]
+        exactcurve = exactcurve.to_frame(self.freqs[0])
 
         CDSClass.setQ(exactcurve)
         ProtectionLeg = CDSClass.getProtectionLeg()
@@ -289,37 +279,23 @@ class PortfolioLossCalculation(object):
 
 
 
+K1 = 0.03
+K2 = 0.07
+Fs = [0.3, 0.5,0.2]
+Rs = [0.40, 0.40,0.40]
+betas = [0.30, 0.30,0.30]
+bootstrap = True
+# Should assume same start,reference and end_dates
+start_dates = [date(2012, 2, 28), date(2012, 2, 28),date(2012, 2, 28)]
+referenceDates = [date(2013, 1, 20), date(2013, 1, 20), date(2013, 1, 20)]
+end_dates = [date(2013, 12, 31), date(2013, 12, 31),date(2013, 12, 31)]
+ratings = ["AAA", "AAA","AAA"]
+freqs = ["3M", "3M","3M"]
+coupons = [1,1,1]
 
-
-#def expdecay(today, rate):
-#    return lambda t: exp(-1 * (t - today).days / 365 * rate)
-#today = date(2012,1, 1)
-#Q = expdecay(today, 0.0140)
-#print(Q(date(2012,1, 3)))
-#print(Q(date(2012,5, 3)))
-
-t_step = 1.0 / 365.0
-simNumber = 10
-start_date = date(2012,2,28)
-end_date = date(2015,12,31)  # Last Date of the Portfolio
-referenceDate = date(2012, 12, 20)
-
-#tvalues = [today + timedelta(days = 30) * n for n in range(37)] #3 years
-#print(tvalues)
-
-K1 = 0.01
-K2 = 0.03
-Fs = [0.3, 0.8]
-Rs = [0.40, 0.60]
-betas = [0.30, 1]
-freq = "3M"
 test = PortfolioLossCalculation(K1 = K1, K2 = K2, Fs = Fs, Rs =Rs, betas = betas,
-                                start_date = start_date,end_date = end_date,freq=freq,
-                                coupon = 0.001,referenceDate = referenceDate,rating="AAA",
-                                R=0)
+                                start_dates = start_dates,end_dates = end_dates,freqs=freqs,
+                                coupons = coupons,referenceDates = referenceDates,ratings=ratings,bootstrap = False)
 test.CDOPortfolio()
-#print(test.getQ())
-#test.Q_lhp(K1=K1, K2 = K2, R =0.4,beta = 0.30)
 
-### Can be extended to a portfolio of CDOs ###
 

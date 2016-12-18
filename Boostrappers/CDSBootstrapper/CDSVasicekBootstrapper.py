@@ -7,8 +7,6 @@ from Products.Credit.CDS import CDS
 from parameters import freq
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
 
-
-
 class BootstrapperCDSLadder(object):
     #  Class with Bootstrapping methods
     #  It can be used with CDS Ladder or KK Ratings CDS Ladder Converted Values
@@ -21,7 +19,7 @@ class BootstrapperCDSLadder(object):
     # %% GetSpread
     def getSpreadBootstrapped(self, xQ, myCDS, s_quotes):
         calcCurve=myCDS.changeGuessForSpread(xQ)
-        error=1e4*(s_quotes-calcCurve[0])**2
+        error=(s_quotes-calcCurve)**2
         return error
 
     def getScheduleComplete(self):
@@ -43,9 +41,11 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                myQ=MC_Vasicek_Sim(x=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i])[0:4],datelist=[orderedCDS[i].referenceDate,orderedCDS[i].maturity],t_step=1/365,simNumber=1000).getLibor()[0]
+                print(quotes)
+                myQ=MC_Vasicek_Sim(x=self.CalibrateCurve(x0=xQ,quotes=quotes,myCDS=orderedCDS[i])[0:4],datelist=[orderedCDS[i].referenceDate,orderedCDS[i].maturity],t_step=1/365,simNumber=1000).getLibor()[0]
                 myQ=pd.DataFrame(myQ.values,columns=[orderedCDS[i].freq],index=myQ.index)
                 orderedCDS[i].myQ=myQ
+                print(myQ)
                 spread[orderedCDS[i].freq]=orderedCDS[i].getSpread()
         return spread
 
@@ -58,7 +58,8 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                out[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes[0],myCDS=orderedCDS[i]).tolist()
+                print(quotes)
+                out[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes,myCDS=orderedCDS[i]).tolist()
         return out
 
     #  Fit CDS Ladder using Vasicek,CRI,etc Model.  Input parameters are x0
@@ -71,5 +72,5 @@ class BootstrapperCDSLadder(object):
         return results.x
 
 
-myLad=BootstrapperCDSLadder(start=trim_start,freq=['6M'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='6M',coupon=1,referenceDate=trim_start,rating='AAA')],R=.4).getSpreadList(x0Vas)
-print(myLad)
+#myLad=BootstrapperCDSLadder(start=trim_start,freq=['1Y'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='1Y',coupon=1,referenceDate=trim_start,rating='CCC')],R=.4).getSpreadList(x0Vas)
+#print(myLad)

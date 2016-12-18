@@ -6,10 +6,11 @@ from Curves.Corporates.CorporateDaily import CorporateRates
 from Products.Rates import CouponBond
 from Scheduler.Scheduler import Scheduler
 from datetime import date
-from parameters import xR, t_step,simNumber,Coupon, fee
+from parameters import xR, t_step, simNumber, Coupon, fee
 import pandas as pd
 import numpy as np
 from pandas.tseries.offsets import MonthEnd
+
 
 ######################## CDS class ######################################
 ## Gets Q and Z based on the reference list
@@ -26,93 +27,91 @@ from pandas.tseries.offsets import MonthEnd
 ##        needs to be adjusted.
 
 class CDS(object):
-    def __init__(self,start_date,end_date,freq,coupon,referenceDate,rating,R=.4):
+    def __init__(self, start_date, end_date, freq, coupon, referenceDate, rating, R=.4):
         ### Parameters passed to external functions
-        self.start_date=start_date
-        self.end_date=end_date
-        self.freq=freq
+        self.start_date = start_date
+        self.end_date = end_date
+        self.freq = freq
         self.R = R
         self.notional = 1
-        self.fee =fee
+        self.fee = fee
         self.rating = rating
-        self.coupon=coupon
+        self.coupon = coupon
         self.referenceDate = referenceDate
         self.observationDate = referenceDate
 
         ## Get datelist ##
         self.myScheduler = Scheduler()
-        #ReferenceDateList = self.myScheduler.getSchedule(start=referenceDate,end=end_date,freq=freq, referencedate=referenceDate)
+        # ReferenceDateList = self.myScheduler.getSchedule(start=referenceDate,end=end_date,freq=freq, referencedate=referenceDate)
 
         ## Delay start and maturity
         delay = self.myScheduler.extractDelay(self.freq)
         cashFlowDays = self.myScheduler.extractDelay("3M")
         ## Delay maturity and start date
-        #self.start_date = self.start_date +SixMonthDelay
-        #self.maturity =self.start_date + delay
+        # self.start_date = self.start_date +SixMonthDelay
+        # self.maturity =self.start_date + delay
         self.maturity = end_date
 
-        fulllist,datelist=self.getScheduleComplete()
-        self.datelist=datelist
+        fulllist, datelist = self.getScheduleComplete()
+        self.datelist = datelist
         self.portfolioScheduleOfCF = fulllist
 
         self.myZ = None
         self.myQ = None
 
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////// SET FUNCTIONS ///////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
 
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////// SET FUNCTIONS ///////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-
-    def setZ(self,Zin):
+    def setZ(self, Zin):
         ## Zin needs to be a pandas dataframe
         self.myZ = Zin
 
-    def setQ(self,Qin):
+    def setQ(self, Qin):
         self.myQ = Qin
 
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////// GET FUNCTIONS ///////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
-    #////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////// GET FUNCTIONS ///////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
+    # ////////////////////////////////////////////////////////////////////////////////////////////#
 
-    #//////////////// Get Vasicek simulated Z(t,t_j)
+    # //////////////// Get Vasicek simulated Z(t,t_j)
     def getZ_Vasicek(self):
         ### Get Z(t,t_i) for t_i in datelist #####
 
         ## Simulate Vasicek model with paramters given in workspace.parameters
-        #xR = [5.0, 0.05, 0.01, 0.05]
-        #kappa = x[0]
-        #theta = x[1]
-        #sigma = x[2]
-        #r0 = x[3]
-        vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate,self.maturity], x=xR, simNumber=20, t_step=t_step)
+        # xR = [5.0, 0.05, 0.01, 0.05]
+        # kappa = x[0]
+        # theta = x[1]
+        # sigma = x[2]
+        # r0 = x[3]
+        vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate, self.maturity], x=xR, simNumber=100, t_step=t_step)
         self.myZ = vasicekMC.getLibor()
-        
-        self.myLibor=self.myZ
-        self.myZ=self.myZ.loc[:,0]
+
+        self.myLibor = self.myZ
+        self.myZ = self.myZ.loc[:, 0]
 
         ## get Libor Z for reference dates ##
-        self.myZ = vasicekMC.getSmallLibor(datelist= self.portfolioScheduleOfCF).loc[:,0]
+        # self.myZ = vasicekMC.getSmallLibor(datelist= self.portfolioScheduleOfCF).loc[:,0]
 
-    #//////////////// Get Corporates simulated Q(t,t_j)
+    # //////////////// Get Corporates simulated Q(t,t_j)
     def getQ_Corporate(self):
         ## Use CorporateDaily to get Q for referencedates ##
-        #print("GET Q")
-        #print(self.portfolioScheduleOfCF)
+        # print("GET Q")
+        # print(self.portfolioScheduleOfCF)
         myQ = CorporateRates()
         myQ.getCorporatesFred(trim_start=self.referenceDate, trim_end=self.end_date)
         ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
-        daterange=pd.date_range(start=self.referenceDate,end=self.maturity).date
-        self.myQ=myQ.getCorporateQData(rating=self.rating, datelist=daterange, R=0.4)
+        daterange = pd.date_range(start=self.referenceDate, end=self.maturity).date
+        self.myQ = myQ.getCorporateQData(rating=self.rating, datelist=daterange, R=self.R)
 
-        return(self.myQ)
+        return (self.myQ)
 
-    #//////////////// Get Premium leg Z(t_i)( Q(t_(i-1)) + Q(t_i) )
+    # //////////////// Get Premium leg Z(t_i)( Q(t_(i-1)) + Q(t_i) )
     def getPremiumLegZ(self):
-        print("Get premium leg ")
         ## Check if Z and Q exists
         if self.myZ is None:
             self.getZ_Vasicek()
@@ -120,54 +119,66 @@ class CDS(object):
         if self.myQ is None:
             self.getQ_Corporate()
 
-
         ## Choose 1month Q
-        #Q1M = self.myQ[self.QFreq]
+
         Q1M = self.myQ[self.freq]
-        timed=self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
-        Q1M=Q1M.loc[timed]
-        zbarPremLeg = self.myZ/self.myZ.loc[self.referenceDate]
-        zbarPremLeg=zbarPremLeg.loc[timed]
+        # Q1M = self.myQ["QTranche"]
+
+        timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
+        Q1M = Q1M.loc[timed]
+        Q1M = Q1M.cumprod(axis=0)
+        Q1M = Q1M/Q1M[self.referenceDate]
+        zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        zbarPremLeg = zbarPremLeg.loc[timed]
         ## Calculate Q(t_i) + Q(t_(i-1))
         Qplus = []
-        out=0
-        for i in range(1,len(Q1M)):
-            out=out+(Q1M[(i-1)] + Q1M[i])*float((timed[i]-timed[i-1]).days/365)*zbarPremLeg[i]
-
+        out = 0
+        for i in range(1, len(Q1M)):
+            out = out + (Q1M[(i - 1)] + Q1M[i]) * float((timed[i] - timed[i - 1]).days / 365) * zbarPremLeg[i]
 
         ## Calculate the PV of the premium leg using the bond class
-        zbarPremLeg=zbarPremLeg.reshape(np.shape(zbarPremLeg)[0],1)
-        #zbarPremLeg = zbarPremLeg.cumsum(axis=0)
-        zbarPremLeg=pd.DataFrame(zbarPremLeg,index=timed)
-        #print("Premium LEg")
-        PVpremiumLeg = out*(1/2)
-        #print(PVpremiumLeg)
+
+        # zbarPremLeg = zbarPremLeg.cumsum(axis=0)
+        zbarPremLeg = pd.DataFrame(zbarPremLeg, index=timed)
+        # print("Premium LEg")
+        PVpremiumLeg = out * (1 / 2)
+        # print(PVpremiumLeg)
         ## Get coupon bond ###
+        print("Premium leg ")
+        print(PVpremiumLeg)
         return PVpremiumLeg
 
-    #//////////////// Get Protection leg Z(t_i)( Q(t_(i-1)) - Q(t_i) )
+    # //////////////// Get Protection leg Z(t_i)( Q(t_(i-1)) - Q(t_i) )
     def getProtectionLeg(self):
-        print("Get protection leg ")
         if self.myZ is None:
             self.getZ_Vasicek()
 
         if self.myQ is None:
             self.getQ_Corporate()
 
-        ## Calculate Q(t_i) + Q(t_(i-1))
-        #Qminus = np.gradient(np.array(Q1M))
-        #print(Qminus)
-        #QArray = np.array(Q1M)
-        #QArray = np.insert(QArray, obj = 0, values = 1)
-        #print(QArray)
+        # Q1M = self.myQ["QTranche"]
 
+
+
+        ## Calculate Q(t_i) + Q(t_(i-1))
+        # Qminus = np.gradient(np.array(Q1M))
+        # print(Qminus)
+        # QArray = np.array(Q1M)
+        # QArray = np.insert(QArray, obj = 0, values = 1)
+        # print(QArray)
+
+
+        # Q1M = self.myQ["QTranche"]
         Q1M = self.myQ[self.freq]
+        Q1M = Q1M.cumprod()
+        Q1M = Q1M / Q1M[self.referenceDate]
+        timed = Q1M.index.tolist()
+        '''
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M = Q1M.loc[timed]
         zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
         zbarPremLeg = zbarPremLeg.loc[timed]
-        print(Q1M)
-        print(zbarPremLeg)
+
         ## Calculate Q(t_i) + Q(t_(i-1))
         Qplus = []
         out = 0
@@ -177,29 +188,29 @@ class CDS(object):
         return(out)
         ## Calculate Z Bar ##
         '''
-        timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
-        zbarProtectionLeg = self.myZ.loc[self.referenceDate:] / self.myZ.loc[self.referenceDate]
-        print(zbarProtectionLeg)
-        for i in range(zbarProtectionLeg.shape[0]):
-            zbarProtectionLeg.iloc[i] = -Qminus[i]*zbarProtectionLeg.iloc[i]*float((timed[i]-timed[i-1]).days/365)
+        Qminus = np.gradient(Q1M)
 
-        PVprotectionLegSum = sum(zbarProtectionLeg)
+        zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        for i in range(1,zbarProtectionLeg.shape[0]):
+            zbarProtectionLeg.iloc[i] = -Qminus[i] * zbarProtectionLeg.iloc[i] * float((timed[i] - timed[i - 1]).days / 365)
+
         ## Calculate the PV of the premium leg using the bond class
-        zbarProtectionLeg=zbarProtectionLeg.reshape(np.shape(zbarProtectionLeg)[0],1)
-        zbarProtectionLeg=zbarProtectionLeg.cumsum(axis=0)
-        zbarProtectionLeg=pd.DataFrame(zbarProtectionLeg,index=Q1M.index)
-        PVprotectionLeg = (1-self.R)*zbarProtectionLeg
 
-        print("Protection LEg")
-        print(PVprotectionLegSum)
+        zbarProtectionLeg = zbarProtectionLeg.cumsum(axis=0)
+        zbarProtectionLeg = pd.DataFrame(zbarProtectionLeg, index=Q1M.index)
+        PVprotectionLeg = (1 - self.R) * zbarProtectionLeg
+        print("protection leg ")
+        print(PVprotectionLeg)
+        print(PVprotectionLeg.loc[self.maturity])
+        print(self.maturity)
         ## Get coupon bond ###
-        return PVprotectionLegSum
-        '''
+        return PVprotectionLeg.loc[self.maturity]
 
-    #/////////////////////// Functions to get the exposure sum [delta Z(t,t_j)( Q(t,t_(j-1)) +/- Q(t,t_j) )
-    #////// These are copied from Coupon bond
+    # /////////////////////// Functions to get the exposure sum [delta Z(t,t_j)( Q(t,t_(j-1)) +/- Q(t,t_j) )
+    # ////// These are copied from Coupon bond
     def getScheduleComplete(self):
-        self.datelist = self.myScheduler.getSchedule(start=self.start_date,end=self.maturity,freq=self.freq,referencedate=self.referenceDate)
+        self.datelist = self.myScheduler.getSchedule(start=self.start_date, end=self.maturity, freq='3M',
+                                                     referencedate=self.referenceDate)
         self.ntimes = len(self.datelist)
         fullset = list(sorted(list(set(self.datelist)
                                    .union([self.referenceDate])
@@ -207,10 +218,10 @@ class CDS(object):
                                    .union([self.maturity])
                                    .union([self.observationDate])
                                    )))
-        return fullset,self.datelist
+        return fullset, self.datelist
 
-    #/////// Get exposure
-    def getExposure(self, referencedate,libor):
+    # /////// Get exposure
+    def getExposure(self, referencedate, libor):
         self.ntrajectories = np.shape(libor)[1]
         self.ones = np.ones(shape=[self.ntrajectories])
         deltaT = np.zeros(self.ntrajectories)
@@ -242,49 +253,88 @@ class CDS(object):
         self.pvAvg = np.average(self.pv) * self.notional
         return self.pv
 
-    #///// Get the calculated Market to Market based on spread
-    def getValue(self,spread = 1,R = 0,buyer = True):
+    # ///// Get the calculated Market to Market based on spread
+    def getValue(self, spread=1, R=0, buyer=True):
         ## Assume V(t) = S/2 sum Z(t_i) (Q(t_i) + Q(t_{i-1})) - (1-R)sum Z(t_i) (Q(t_{i-1}) - Q(t_{i}))
         ## Premium leg = S/2 sum Z(t_i) (Q(t_i) + Q(t_{i-1}))
         ## Protection leg =sum Z(t_i) (Q(t_i) + Q(t_{i-1}))
         premiumLeg = self.getPremiumLegZ()
         protectionLeg = self.getProtectionLeg()
 
-        mtm = (spread/2)*premiumLeg - (1-R)*protectionLeg
+        mtm = (spread / 2) * premiumLeg - (1 - R) * protectionLeg
         if buyer is True:
             return mtm
         else:
             return -mtm
 
     def getSpread(self):
-        out=self.getProtectionLeg()/self.getPremiumLegZ()
-        return out.loc[self.maturity]
+        out = self.getProtectionLeg() / self.getPremiumLegZ()
 
-    def changeGuessForSpread(self,x):
-        vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate,self.maturity], x=x, simNumber=20, t_step=t_step)
+        return out.values[0]
+
+    def changeGuessForSpread(self, x):
+        '''
+        inputs a x list of guesses for the Vasicek simulator than changes the myQ
+        '''
+        vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate, self.maturity], x=x, simNumber=20, t_step=t_step)
         self.myQ = vasicekMC.getLibor()[0]
-        self.myQ = pd.DataFrame(self.myQ,index=self.myQ.index)
+        self.myQ = pd.DataFrame(self.myQ, index=self.myQ.index)
         self.myQ.columns = [self.freq]
-        return self.getSpread()
+        spread = self.bootProtec() / self.bootPrem()
+        return spread.values[0]
 
+    def bootProtec(self):
+        Q1M = self.myQ[self.freq]
+        Q1M = Q1M.cumprod()
+        Qminus = np.gradient(Q1M)
+        zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        for i in range(zbarProtectionLeg.shape[0]):
+            zbarProtectionLeg.iloc[i] = -Qminus[i] * zbarProtectionLeg.iloc[i] * (1 / 365)
+        ## Calculate the PV of the premium leg using the bond class
+        zbarProtectionLeg = zbarProtectionLeg.cumsum(axis=0)
+        zbarProtectionLeg = pd.DataFrame(zbarProtectionLeg, index=Q1M.index)
+        PVprotectionLeg = (1 - self.R) * zbarProtectionLeg
+        ## Get coupon bond ###
+        return PVprotectionLeg.loc[self.maturity]
+
+    def bootPrem(self):
+        Q1M = self.myQ[self.freq]
+        # Q1M = self.myQ["QTranche"]
+        Q1M = Q1M.cumprod()
+        timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
+        Q1M = Q1M.loc[timed]
+        zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        zbarPremLeg = zbarPremLeg.loc[timed]
+        ## Calculate Q(t_i) + Q(t_(i-1))
+        Qplus = []
+        out = 0
+        for i in range(1, len(Q1M)):
+            out = out + (Q1M[(i - 1)] + Q1M[i]) * float((timed[i] - timed[i - 1]).days / 365) * zbarPremLeg[i]
+        ## Calculate the PV of the premium leg using the bond class
+        # zbarPremLeg = zbarPremLeg.cumsum(axis=0)
+        zbarPremLeg = pd.DataFrame(zbarPremLeg, index=timed)
+        # print("Premium LEg")
+        PVpremiumLeg = out * (1 / 2)
+        # print(PVpremiumLeg)
+        ## Get coupon bond ###
+        return PVpremiumLeg
 
 #### TEST FUNCTIONS ###
 
 # Parameters
-#t_step = 1.0 / 365.0
-#simNumber = 10
-#start_date = date(2006,2,28)
-#end_date = date(2008,9,30)  # Last Date of the Portfolio
-#start = date(2006, 2, 28)
-#referenceDate = date(2006, 3, 10)
+# t_step = 1.0 / 365.0
+# simNumber = 10
+# start_date = date(2006,2,28)
+# end_date = date(2008,9,30)  # Last Date of the Portfolio
+# start = date(2006, 2, 28)
+# referenceDate = date(2006, 3, 10)
 
-# Testing of functions 
-#testCDS = CDS(start_date = start_date,end_date=end_date,freq='6M',coupon=1,referenceDate=referenceDate,rating="CCC",R=.4)
+# Testing of functions
+# testCDS = CDS(start_date = start_date,end_date=end_date,freq='6M',coupon=1,referenceDate=referenceDate,rating="CCC",R=.4)
 
 
-#getPremLeg = testCDS.getPremiumLegZ()
-#getProtectionLeg = testCDS.getProtectionLeg()
-#print(getPremLeg)
-#print(getProtectionLeg)
-#print(testCDS.getSpread())
-
+# getPremLeg = testCDS.getPremiumLegZ()
+# getProtectionLeg = testCDS.getProtectionLeg()
+# print(getPremLeg)
+# print(getProtectionLeg)
+# print(testCDS.getSpread())
