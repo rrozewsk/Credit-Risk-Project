@@ -1,7 +1,13 @@
 import numpy as np
 import scipy.stats as sc
 
+'''
 
+
+A very early monte carlo simulation of CDO pricing using a Gaussian copula
+Prices well but not used in final project
+
+'''
 
 class CDO(object):
     def __init__(self,type,LGD,probDefault,correlations,underlyings,copula,notational):

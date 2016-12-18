@@ -50,7 +50,7 @@ class CDS(object):
         ## Delay maturity and start date
         # self.start_date = self.start_date +SixMonthDelay
         # self.maturity =self.start_date + delay
-        self.maturity = end_date
+        self.maturity = self.start_date+delay
 
         fulllist, datelist = self.getScheduleComplete()
         self.datelist = datelist
@@ -120,18 +120,15 @@ class CDS(object):
             self.getQ_Corporate()
 
         ## Choose 1month Q
-
+        '''
         Q1M = self.myQ[self.freq]
         # Q1M = self.myQ["QTranche"]
-
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M = Q1M.loc[timed]
         Q1M = Q1M.cumprod(axis=0)
-        Q1M = Q1M/Q1M[self.referenceDate]
         zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
         zbarPremLeg = zbarPremLeg.loc[timed]
         ## Calculate Q(t_i) + Q(t_(i-1))
-        Qplus = []
         out = 0
         for i in range(1, len(Q1M)):
             out = out + (Q1M[(i - 1)] + Q1M[i]) * float((timed[i] - timed[i - 1]).days / 365) * zbarPremLeg[i]
@@ -144,8 +141,27 @@ class CDS(object):
         PVpremiumLeg = out * (1 / 2)
         # print(PVpremiumLeg)
         ## Get coupon bond ###
-        print("Premium leg ")
-        print(PVpremiumLeg)
+        return PVpremiumLeg
+        '''
+        Q1M = self.myQ[self.freq]
+        # Q1M = self.myQ["QTranche"]
+        timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
+        Q1M = Q1M.loc[timed]
+        Q1M=Q1M.cumprod()
+        zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        zbarPremLeg = zbarPremLeg.loc[timed]
+        ## Calculate Q(t_i) + Q(t_(i-1))
+        Qplus = []
+        out = 0
+        for i in range(1, len(Q1M)):
+            out = out + (Q1M[(i - 1)] + Q1M[i]) * float((timed[i] - timed[i - 1]).days / 365) * zbarPremLeg[i]
+        ## Calculate the PV of the premium leg using the bond class
+        # zbarPremLeg = zbarPremLeg.cumsum(axis=0)
+        zbarPremLeg = pd.DataFrame(zbarPremLeg, index=timed)
+        # print("Premium LEg")
+        PVpremiumLeg = out * (1 / 2)
+        # print(PVpremiumLeg)
+        ## Get coupon bond ###
         return PVpremiumLeg
 
     # //////////////// Get Protection leg Z(t_i)( Q(t_(i-1)) - Q(t_i) )
@@ -169,11 +185,10 @@ class CDS(object):
 
 
         # Q1M = self.myQ["QTranche"]
+        '''
         Q1M = self.myQ[self.freq]
         Q1M = Q1M.cumprod()
-        Q1M = Q1M / Q1M[self.referenceDate]
         timed = Q1M.index.tolist()
-        '''
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M = Q1M.loc[timed]
         zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
@@ -187,22 +202,31 @@ class CDS(object):
 
         return(out)
         ## Calculate Z Bar ##
-        '''
+        
         Qminus = np.gradient(Q1M)
 
         zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
         for i in range(1,zbarProtectionLeg.shape[0]):
-            zbarProtectionLeg.iloc[i] = -Qminus[i] * zbarProtectionLeg.iloc[i] * float((timed[i] - timed[i - 1]).days / 365)
+            zbarProtectionLeg.iloc[i] = -Qminus[i] * zbarProtectionLeg.iloc[i] * (1/365)
 
         ## Calculate the PV of the premium leg using the bond class
 
         zbarProtectionLeg = zbarProtectionLeg.cumsum(axis=0)
         zbarProtectionLeg = pd.DataFrame(zbarProtectionLeg, index=Q1M.index)
         PVprotectionLeg = (1 - self.R) * zbarProtectionLeg
-        print("protection leg ")
-        print(PVprotectionLeg)
-        print(PVprotectionLeg.loc[self.maturity])
-        print(self.maturity)
+        ## Get coupon bond ###
+        return PVprotectionLeg.loc[self.maturity]
+        '''
+        Q1M = self.myQ[self.freq]
+        Q1M = Q1M.cumprod()
+        Qminus = np.gradient(Q1M)
+        zbarProtectionLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        for i in range(zbarProtectionLeg.shape[0]):
+            zbarProtectionLeg.iloc[i] = -Qminus[i] * zbarProtectionLeg.iloc[i] * (1 / 365)
+        ## Calculate the PV of the premium leg using the bond class
+        zbarProtectionLeg = zbarProtectionLeg.cumsum(axis=0)
+        zbarProtectionLeg = pd.DataFrame(zbarProtectionLeg, index=Q1M.index)
+        PVprotectionLeg = (1 - self.R) * zbarProtectionLeg
         ## Get coupon bond ###
         return PVprotectionLeg.loc[self.maturity]
 
@@ -268,7 +292,8 @@ class CDS(object):
             return -mtm
 
     def getSpread(self):
-        out = self.getProtectionLeg() / self.getPremiumLegZ()
+
+        out=self.getProtectionLeg()/self.getPremiumLegZ()
 
         return out.values[0]
 
@@ -300,9 +325,9 @@ class CDS(object):
     def bootPrem(self):
         Q1M = self.myQ[self.freq]
         # Q1M = self.myQ["QTranche"]
-        Q1M = Q1M.cumprod()
         timed = self.portfolioScheduleOfCF[self.portfolioScheduleOfCF.index(self.referenceDate):]
         Q1M = Q1M.loc[timed]
+        Q1M=Q1M.cumprod()
         zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
         zbarPremLeg = zbarPremLeg.loc[timed]
         ## Calculate Q(t_i) + Q(t_(i-1))

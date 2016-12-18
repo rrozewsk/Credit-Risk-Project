@@ -183,7 +183,7 @@ class CorporateRates(object):
         cols=['0D']+cols
 
         ## Get OIS ###
-        getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
+        #getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
         #print(getOIS.getOIS(datelist = datelist))
 
         #outCurve = ((1 - (1 / (1 - R)) * (1 - (self.getCorporatesFred(trim_start) / self.getCorporateData(rating='OIS', datelist=datelist)))).values).tolist()

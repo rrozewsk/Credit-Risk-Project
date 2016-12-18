@@ -41,11 +41,11 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                print(quotes)
+                #print(quotes)
                 myQ=MC_Vasicek_Sim(x=self.CalibrateCurve(x0=xQ,quotes=quotes,myCDS=orderedCDS[i])[0:4],datelist=[orderedCDS[i].referenceDate,orderedCDS[i].maturity],t_step=1/365,simNumber=1000).getLibor()[0]
                 myQ=pd.DataFrame(myQ.values,columns=[orderedCDS[i].freq],index=myQ.index)
                 orderedCDS[i].myQ=myQ
-                print(myQ)
+                #print(myQ)
                 spread[orderedCDS[i].freq]=orderedCDS[i].getSpread()
         return spread
 
@@ -58,7 +58,7 @@ class BootstrapperCDSLadder(object):
                     orderedCDS.append(self.listCDS[j])
         for i in range(0,len(orderedCDS)):
                 quotes=orderedCDS[i].getSpread()
-                print(quotes)
+                #print(quotes)
                 out[orderedCDS[i].freq]=self.CalibrateCurve(x0=xQ,quotes=quotes,myCDS=orderedCDS[i]).tolist()
         return out
 
@@ -71,6 +71,7 @@ class BootstrapperCDSLadder(object):
         print(myCDS.freq)
         return results.x
 
-
-#myLad=BootstrapperCDSLadder(start=trim_start,freq=['1Y'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='1Y',coupon=1,referenceDate=trim_start,rating='CCC')],R=.4).getSpreadList(x0Vas)
-#print(myLad)
+'''
+myLad=BootstrapperCDSLadder(start=trim_start,freq=['3M'],CDSList=[CDS(start_date=trim_start,end_date=date(2010,1,1),freq='3M',coupon=1,referenceDate=trim_start,rating='AAA')],R=.4).getSpreadList(x0Vas)
+print(myLad)
+'''
