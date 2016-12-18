@@ -12,6 +12,7 @@ from Products.Credit.CDS import CDS
 from Scheduler.Scheduler import Scheduler
 from scipy.integrate import quad
 from Curves.PortfolioLoss.ExactFunc import ExactFunc
+from parameters import xR,t_step, simNumber
 
 from Boostrappers.CDSBootstrapper.CDSVasicekBootstrapper import BootstrapperCDSLadder
 from MonteCarloSimulators.Vasicek.vasicekMCSim import MC_Vasicek_Sim
@@ -29,38 +30,56 @@ class PortfolioLossCalculation(object):
         self.coupons = coupons
         self.start_dates = start_dates
         self.end_dates = end_dates
-        self.myScheduler = Scheduler()
-        #delay = self.myScheduler.extractDelay(self.freq)
-        #self.maturity = end_date
         self.ratings = ratings
 
-        #self.CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=1, referenceDate=referenceDate,
-        #              rating=rating, R=R)
-        #self.portfolioScheduleOfCF,self.datelist = self.CDSClass.getScheduleComplete()
+        self.R = Rs[0]
+        self.beta = betas[0]
+        self.referenceDate = referenceDates[0]
+        self.freq = freqs[0]
+        self.coupon = coupons[0]
+        self.start_date = start_dates[0]
+        self.end_date = end_dates[0]
+        self.rating = ratings[0]
+        self.maturity = end_dates[0]
 
-    def getQ(self,start_date,referenceDate,end_date,rating,R,freq):
+        self.myScheduler = Scheduler()
+
+    def setParameters(self,R,rating,coupon,beta,start_date,referenceDate,end_date,freq):
+        self.R = R
+        self.beta = beta
+        self.referenceDate = referenceDate
+        self.freq = freq
+        self.coupon = coupon
+        self.start_date = start_date
+        self.end_date = end_date
+        self.rating = rating
+        self.maturity = end_date
+
+    def getQ(self,start_date,referenceDate,end_date,freq,coupon,rating,R):
         ## Use CorporateDaily to get Q for referencedates ##
         # print("GET Q")
         # print(self.portfolioScheduleOfCF)
 
         if self.bootstrap:
             print("Q bootstrap")
-            CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=1, referenceDate=referenceDate,
-                           rating=rating, R=R)
-            myLad = BootstrapperCDSLadder(start=start_date, freq=[freq], CDSList=[CDSClass],
+            CDSClass = CDS(start_date=start_date, end_date=end_date, freq=freq, coupon=coupon,
+                           referenceDate=referenceDate,rating=rating, R=R)
+            myLad = BootstrapperCDSLadder(start=self.start_date, freq=[freq], CDSList=[CDSClass],
                                           R=CDSClass.R).getXList(x0Vas)[freq]
             self.Q1M = MC_Vasicek_Sim(x=myLad, t_step = 1 / 365,
-                                 datelist=[CDSClass.referenceDate, CDSClass.end_date],simNumber=50).getLibor()[0]
+                                 datelist=[CDSClass.referenceDate, CDSClass.end_date],simNumber=simNumber).getLibor()[0]
             print(self.Q1M)
         else:
             myQ = CorporateRates()
             myQ.getCorporatesFred(trim_start=referenceDate, trim_end=end_date)
             ## Return the calculated Q(t,t_i) for bonds ranging over maturities for a given rating
             daterange = pd.date_range(start=referenceDate, end=end_date).date
-            self.myQ = myQ.getCorporateQData(rating=rating, datelist=daterange, R=R)
-            self.Q1M = self.myQ[freq]
+            myQ = myQ.getCorporateQData(rating=rating, datelist=daterange, R=R)
+            Q1M = myQ[freq]
+            print(Q1M)
 
-        return(self.Q1M)
+
+        return(Q1M)
 
     def Q_lhp(self,t, K1, K2, R, beta, Q):
         """Calculates the Tranche survival curve for the LHP model.
@@ -198,24 +217,103 @@ class PortfolioLossCalculation(object):
         emin = lambda K: sum([I[k] * min(k * g, K) for k in range(sum(ns))])
         return 1 - (emin(K2) - emin(K1)) / (K2 - K1)
 
+    def getZ_Vasicek(self):
+        ### Get Z(t,t_i) for t_i in datelist #####
+
+        ## Simulate Vasicek model with paramters given in workspace.parameters
+        # xR = [5.0, 0.05, 0.01, 0.05]
+        # kappa = x[0]
+        # theta = x[1]
+        # sigma = x[2]
+        # r0 = x[3]
+        vasicekMC = MC_Vasicek_Sim(datelist=[self.referenceDate, self.end_date], x=xR, simNumber=10, t_step=t_step)
+        self.myZ = vasicekMC.getLibor()
+        self.myZ = self.myZ.loc[:, 0]
+
+    def getScheduleComplete(self):
+        datelist = self.myScheduler.getSchedule(start=self.start_date, end=self.maturity, freq=self.freq,
+                                                     referencedate=self.referenceDate)
+        ntimes = len(datelist)
+        fullset = list(sorted(list(set(datelist)
+                                   .union([self.referenceDate])
+                                   .union([self.start_date])
+                                   .union([self.maturity])
+                                   .union([self.referenceDate])
+                                   )))
+        return fullset, datelist
+
+    def getPremiumLegZ(self,myQ):
+        Q1M = myQ
+        # Q1M = self.myQ["QTranche"]
+        fulllist, datelist = self.getScheduleComplete()
+        portfolioScheduleOfCF = fulllist
+        timed = portfolioScheduleOfCF[portfolioScheduleOfCF.index(self.referenceDate):]
+
+        Q1M = Q1M.loc[timed]
+
+        zbarPremLeg = self.myZ / self.myZ.loc[self.referenceDate]
+        zbarPremLeg = zbarPremLeg.loc[timed]
+        ## Calculate Q(t_i) + Q(t_(i-1))
+        Qplus = []
+        out = 0
+        for i in range(1, len(Q1M)):
+            out = out + (Q1M[(i - 1)] + Q1M[i]) * float((timed[i] - timed[i - 1]).days / 365) * zbarPremLeg[i]
+
+        zbarPremLeg = pd.DataFrame(zbarPremLeg, index=timed)
+        # print("Premium LEg")
+        PVpremiumLeg = out * (1 / 2)
+        # print(PVpremiumLeg)
+        ## Get coupon bond ###
+        print(PVpremiumLeg)
+        return PVpremiumLeg
+
+        # //////////////// Get Protection leg Z(t_i)( Q(t_(i-1)) - Q(t_i) )
+
+    def getProtectionLeg(self,myQ):
+        print("Protection Leg ")
+        Q1M = myQ
+        #Qminus = np.gradient(Q1M)
+        zbarProtectionLeg = self.myZ
+
+        out = 0
+        for i in range(1,zbarProtectionLeg.shape[0]):
+            #out = -Qminus[i] * zbarProtectionLeg.iloc[i]*float(1/365)
+            out = out  -(Q1M.iloc[i]-Q1M.iloc[i-1]) * zbarProtectionLeg.iloc[i]
+
+        ## Calculate the PV of the premium leg using the bond class
+        print(out)
+        return out
 
     def CDOPortfolio(self):
-
-
-        CDSClass = CDS(start_date=self.start_dates[0], end_date=self.end_dates[0], freq=self.freqs[0], coupon=self.coupons[0],
-                       referenceDate=self.referenceDates[0],
-                            rating=self.ratings[0], R=0)
-
+        self.setParameters(R=self.Rs[0], rating = self.ratings[0], coupon=self.coupons[0],
+                           beta = self.betas[0], start_date = start_dates[0],
+                           referenceDate = referenceDates[0], end_date = end_dates[0], freq = self.freqs[0])
         ## price CDOs using LHP
-        Q_now1 = self.getQ(self.start_dates[0],self.referenceDates[0],self.end_dates[0],self.ratings[0],
-                           self.Rs[0],self.freqs[0])
+        Q_now1 = self.getQ(start_date = self.start_dates[0],referenceDate=self.referenceDates[0],
+                           end_date = self.end_dates[0],freq = self.freqs[0],coupon=self.coupons[0],
+                           rating = self.ratings[0],R = self.Rs[0])
 
+        ## Estimate default probabilites from Qtranche list ###
+        ## Assume that lambda is constant over a small period of time
+        def getApproxDefaultProbs(Qvals, freq, tvalues):
+            t_start = tvalues[0]
+            delay = self.myScheduler.extractDelay(freq)
+            delay_days = ((t_start + delay) - t_start).days
+            ## Estimate constant lambda
+            lam = -(1 / delay_days) * np.log(Qvals[t_start])
+            Qvals = [((Qvals[t_start] * exp(-lam * (t - t_start).days)) / Qvals[t]) for t in tvalues]
+            return (Qvals)
+        ########################################################
+
+
+        print(Q_now1)
         ### Create Q dataframe
         tvalues = Q_now1.index.tolist()
         Cs = pd.Series(Q_now1,index=tvalues)
         for cds_num in range(1,len(Fs)):
-            Q_add = self.getQ(self.start_dates[cds_num],self.referenceDates[cds_num], self.end_dates[cds_num], self.ratings[cds_num],
-                              self.Rs[cds_num], self.freqs[cds_num])
+            Q_add = self.getQ(start_date = self.start_dates[cds_num],referenceDate=self.referenceDates[cds_num],
+                           end_date = self.end_dates[cds_num],freq = self.freqs[cds_num],coupon=self.coupons[cds_num],
+                           rating = self.ratings[cds_num],R = self.Rs[cds_num])
             Q_add = pd.Series(Q_add,index = tvalues)
             Cs = pd.concat([Cs,Q_add],axis = 1)
 
@@ -226,17 +324,20 @@ class PortfolioLossCalculation(object):
         #Qs = [expdecay(0),expdecay(1)]
         Qs = [expdecay(n) for n in range(0,Cs.shape[1])]
 
+        self.getZ_Vasicek()
+
         ###### LHP Method #####################################################################
         Rs_mean = np.mean(self.Rs)
         betas_mean = np.mean(betas)
 
-        lhpcurve = [self.Q_lhp(t, self.K1, self.K2, R = Rs_mean, beta = betas_mean, Q = Qs[0]) for t in tvalues]
-        lhpcurve = pd.Series(lhpcurve,index = tvalues)
-        lhpcurve = lhpcurve.to_frame(self.freqs[0])
+        lhpcurve = [self.Q_lhp(t, self.K1, self.K2, R = Rs[0], beta = betas[0], Q = Qs[0]) for t in tvalues]
 
-        CDSClass.setQ(lhpcurve)
-        ProtectionLeg = CDSClass.getProtectionLeg()
-        PremiumLeg = CDSClass.getPremiumLegZ()
+        lhpcurve = pd.Series(lhpcurve, index=tvalues)
+        lhpcurve = getApproxDefaultProbs(lhpcurve,freq=self.freq,tvalues=tvalues)
+        lhpcurve = pd.Series(lhpcurve, index=tvalues)
+
+        ProtectionLeg = self.getProtectionLeg(myQ = lhpcurve)
+        PremiumLeg = self.getPremiumLegZ(myQ = lhpcurve)
         spreads = ProtectionLeg / PremiumLeg
         print("The spread for LHP is: ", 10000 * spreads, ".")
         ########################################################################################
@@ -245,42 +346,44 @@ class PortfolioLossCalculation(object):
         print('Gaussian progression: ', end="")
         gaussiancurve = [self.Q_gauss(t, self.K1, self.K2, Fs = self.Fs, Rs =self.Rs, betas=self.betas, Qs=Qs) for t in tvalues]
         gaussiancurve = pd.Series(gaussiancurve, index=tvalues)
-        gaussiancurve = gaussiancurve.to_frame(self.freqs[0])
-        print(gaussiancurve.head(10))
+        gaussiancurve = getApproxDefaultProbs(gaussiancurve, freq=self.freq, tvalues=tvalues)
+        gaussiancurve = pd.Series(gaussiancurve, index=tvalues)
 
-        CDSClass.setQ(gaussiancurve)
-        ProtectionLeg = CDSClass.getProtectionLeg()
-        PremiumLeg = CDSClass.getPremiumLegZ()
+        ProtectionLeg = self.getProtectionLeg(myQ=gaussiancurve)
+        PremiumLeg = self.getPremiumLegZ(myQ=gaussiancurve)
         spreads = ProtectionLeg / PremiumLeg
-        print("The Gaussian spread is: ", 10000 * spreads, ".")
+        print("The spread for Gaussian is: ", 10000 * spreads, ".")
+        ########################################################################################
 
         ###### Adjusted Binomial Method #####################################################################
         adjustedbinomialcurve = [self.Q_adjbinom(t, self.K1, self.K2, Fs = self.Fs, Rs = self.Rs, betas=self.betas, Qs=Qs) for t in tvalues]
         adjustedbinomialcurve = pd.Series(adjustedbinomialcurve, index=tvalues)
-        adjustedbinomialcurve = adjustedbinomialcurve.to_frame(self.freqs[0])
+        adjustedbinomialcurve = getApproxDefaultProbs(adjustedbinomialcurve, freq=self.freq, tvalues=tvalues)
+        adjustedbinomialcurve = pd.Series(adjustedbinomialcurve, index=tvalues)
+        #adjustedbinomialcurve = adjustedbinomialcurve.to_frame(self.freqs[0])
 
-        CDSClass.setQ(adjustedbinomialcurve)
-        ProtectionLeg = CDSClass.getProtectionLeg()
-        PremiumLeg = CDSClass.getPremiumLegZ()
+        ProtectionLeg = self.getProtectionLeg(myQ=adjustedbinomialcurve)
+        PremiumLeg = self.getPremiumLegZ(myQ=adjustedbinomialcurve)
         spreads = ProtectionLeg / PremiumLeg
-        print("The Adjusted Binomial spread is: ", 10000 * spreads, ".")
+        print("The spread for Ajusted Binomial is: ", 10000 * spreads, ".")
+        ########################################################################################
 
         ###### Exact Method #####################################################################
         exactcurve = [self.Q_exact(t, self.K1, self.K2, Fs =self.Fs, Rs = self.Rs, betas =self.betas, Qs =Qs) for t in tvalues]
         exactcurve = pd.Series(exactcurve, index=tvalues)
-        exactcurve = exactcurve.to_frame(self.freqs[0])
+        exactcurve = getApproxDefaultProbs(exactcurve, freq=self.freq, tvalues=tvalues)
+        exactcurve = pd.Series(exactcurve, index=tvalues)
+        #exactcurve = exactcurve.to_frame(self.freqs[0])
 
-        CDSClass.setQ(exactcurve)
-        ProtectionLeg = CDSClass.getProtectionLeg()
-        PremiumLeg = CDSClass.getPremiumLegZ()
+        ProtectionLeg = self.getProtectionLeg(myQ=exactcurve)
+        PremiumLeg = self.getPremiumLegZ(myQ=exactcurve)
         spreads = ProtectionLeg / PremiumLeg
-        print("The Exact spread is: ", 10000 * spreads, ".")
+        print("The spread for Exact is: ", 10000 * spreads, ".")
+        ########################################################################################
 
 
-
-
-K1 = 0.03
-K2 = 0.07
+K1 = 0.00001
+K2 = 0.03
 Fs = [0.3, 0.5,0.2]
 Rs = [0.40, 0.40,0.40]
 betas = [0.30, 0.30,0.30]

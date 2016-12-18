@@ -176,6 +176,7 @@ class CorporateRates(object):
         trim_start = datelist[0]
         trim_end = datelist[-1]
         # Create Q curves using q-tilde equation
+
         outCurve=((1-(1/(1-R))*(1-(self.getCorporateData(rating=rating, datelist=datelist)/self.getCorporateData(rating='OIS',datelist=datelist)))).values).tolist()
         out=pd.DataFrame(outCurve,index=datelist)
         out[out<0]=0
@@ -185,6 +186,7 @@ class CorporateRates(object):
         ## Get OIS ###
         #getOIS = OIS(trim_start = trim_start,trim_end=trim_end)
         #print(getOIS.getOIS(datelist = datelist))
+
 
         #outCurve = ((1 - (1 / (1 - R)) * (1 - (self.getCorporatesFred(trim_start) / self.getCorporateData(rating='OIS', datelist=datelist)))).values).tolist()
 
