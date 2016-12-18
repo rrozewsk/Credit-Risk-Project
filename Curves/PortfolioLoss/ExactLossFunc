@@ -111,11 +111,11 @@ class ExactFunc():
         
         if(j==0 and k==0):
             return 1
-        if(j==0 and k>0 and k<=2533):
+        if(j==0 and k>0):
             return 0
-        if(k>=0 and k<vec[j] and j<len(vec)):
+        if(k>=0 and k<vec[j]):
             return self.fprime(k,j-1,vec)*self.probs[self.underlyings[j][3]][self.underlyings[j][2]]
-        if(vec[j]<= k and k<=253):
+        if(vec[j]<= k):
             return self.fprime(k,j-1,vec)*(self.probs[self.underlyings[j][3]][self.underlyings[j][2]])+self.fprime(k-vec[j],j-1,vec)*(1-self.probs[self.underlyings[j][3]][self.underlyings[j][2]])
         
         
